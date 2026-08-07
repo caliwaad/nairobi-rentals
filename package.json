@@ -1,0 +1,15 @@
+{
+  "name": "nairobi-rentals",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nairobi Rentals — a Zillow-style rental marketplace for Nairobi. Monorepo: Expo mobile app + (planned) Next.js API/admin.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "mobile": "npm run start -w @nairobi-rentals/mobile"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

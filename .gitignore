@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Environment / secrets — never commit real keys
+.env
+.env.*
+!.env.example
+
+# Next.js (future apps/web)
+.next/
+out/
+
+# Freebuff internal data (desktop app workspace files)
+.freebuff/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
