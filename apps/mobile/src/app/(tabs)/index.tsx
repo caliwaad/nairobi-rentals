@@ -1,9 +1,10 @@
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { FilterSheet } from '@/components/filter-sheet';
 import { ListingCard } from '@/components/listing-card';
+import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
@@ -14,11 +15,13 @@ import {
   type ListingFilters,
 } from '@/data/sample-listings';
 
-const ItemSeparator = () => <View style={styles.separator} />;
 import { useTheme } from '@/hooks/use-theme';
+
+const ItemSeparator = () => <View style={styles.separator} />;
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const [filters, setFilters] = useState<ListingFilters>(EMPTY_FILTERS);
   const [filterVisible, setFilterVisible] = useState(false);
   const [query, setQuery] = useState('');
@@ -40,10 +43,9 @@ export default function HomeScreen() {
   ).length;
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <View style={[styles.content, Platform.OS === 'web' && styles.contentWeb]}>
-          <View style={styles.header}>
+    <View style={styles.page}>
+      <ScreenContainer>
+        <View style={styles.header}>
             <View style={styles.headerText}>
               <ThemedText style={styles.brand}>Nairobi Rentals</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
@@ -104,7 +106,14 @@ export default function HomeScreen() {
           <FlatList
             data={filtered}
             keyExtractor={(listing) => listing.id}
-            renderItem={({ item }) => <ListingCard listing={item} />}
+            renderItem={({ item }) => (
+              <ListingCard
+                listing={item}
+                onPress={(listing) =>
+                  router.push({ pathname: '/listing/[id]', params: { id: listing.id } })
+                }
+              />
+            )}
             ItemSeparatorComponent={ItemSeparator}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
@@ -127,8 +136,7 @@ export default function HomeScreen() {
               </ThemedView>
             }
           />
-        </View>
-      </SafeAreaView>
+      </ScreenContainer>
 
       <FilterSheet
         visible={filterVisible}
@@ -139,26 +147,13 @@ export default function HomeScreen() {
         }}
         onClose={() => setFilterVisible(false)}
       />
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  page: {
     flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.three,
-  },
-  contentWeb: {
-    paddingTop: 84,
   },
   header: {
     flexDirection: 'row',

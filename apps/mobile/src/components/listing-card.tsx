@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
 import { formatKES, SIZE_LABELS, type Listing } from '@/data/sample-listings';
 import { useTheme } from '@/hooks/use-theme';
+import { useFavoritesStore, useIsFavorite } from '@/store/favorites';
 
 interface ListingCardProps {
   listing: Listing;
@@ -15,7 +16,8 @@ interface ListingCardProps {
 
 export const ListingCard = memo(function ListingCard({ listing, onPress }: ListingCardProps) {
   const theme = useTheme();
-  const [saved, setSaved] = useState(false);
+  const saved = useIsFavorite(listing.id);
+  const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
@@ -93,7 +95,7 @@ export const ListingCard = memo(function ListingCard({ listing, onPress }: Listi
       </Pressable>
 
       <Pressable
-        onPress={() => setSaved((s) => !s)}
+        onPress={() => toggleFavorite(listing.id)}
         hitSlop={12}
         accessibilityRole="button"
         accessibilityLabel={saved ? 'Remove from saved' : 'Save listing'}

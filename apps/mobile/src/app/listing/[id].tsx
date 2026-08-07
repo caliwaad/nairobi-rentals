@@ -25,6 +25,7 @@ import {
   whatsappLink,
 } from '@/data/sample-listings';
 import { useTheme } from '@/hooks/use-theme';
+import { useFavoritesStore, useIsFavorite } from '@/store/favorites';
 
 export default function ListingDetailScreen() {
   const theme = useTheme();
@@ -35,7 +36,8 @@ export default function ListingDetailScreen() {
   const listing = SAMPLE_LISTINGS.find((l) => l.id === id);
   const [heroWidth, setHeroWidth] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [saved, setSaved] = useState(false);
+  const saved = useIsFavorite(id ?? '');
+  const toggleFavorite = useFavoritesStore((s) => s.toggle);
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -89,7 +91,7 @@ export default function ListingDetailScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => setSaved((s) => !s)}
+            onPress={() => listing && toggleFavorite(listing.id)}
             accessibilityRole="button"
             accessibilityLabel={saved ? 'Remove from saved' : 'Save listing'}
             accessibilityState={{ selected: saved }}
