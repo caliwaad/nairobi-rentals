@@ -35,7 +35,7 @@
 | 9 | AI | **No AI in v1** — trigger.dev for background jobs only (AI parked) |
 | 10 | Listing type | **Rent only** (`listing_type` enum reserved for future sale listings) |
 | 11 | Amenities | Unit amenities = realtor checkbox list; nearby facilities = derived from maps |
-| 12 | Reviews | One per user per listing, editable, no self-review, anonymous aggregate |
+| 12 | Reviews | One per user per listing, editable, no self-review; reviews show the user's **self-chosen username** (no real names / PII); star average shown as an aggregate |
 | 13 | Size enum | `bedsitter, studio, 1br, 2br, 3br, 4br, 4br+, maisonette, standalone` |
 | 14 | Lifecycle | **Archive, not delete** (favorites/reviews intact, disappears from search) |
 | 15 | Backend | **Next.js (App Router) on Vercel** — REST route handlers + web admin in one deployable |
