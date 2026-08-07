@@ -26,6 +26,14 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/** Product brand palette — theme-independent accent colors. */
+export const Brand = {
+  primary: '#0F766E', // teal-700
+  primaryStrong: '#115E59', // teal-800
+  star: '#F59E0B', // amber-500
+  heart: '#E11D48', // rose-600
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
