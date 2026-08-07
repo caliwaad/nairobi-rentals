@@ -30,6 +30,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nairobi Rentals uses your photo library so you can set a profile picture.",
+          "cameraPermission": "Nairobi Rentals uses your camera so you can take a profile picture."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",

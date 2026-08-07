@@ -32,6 +32,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="heart" md="favorite" />
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="person" md="person" />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

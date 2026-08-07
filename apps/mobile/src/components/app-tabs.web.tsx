@@ -30,6 +30,9 @@ export default function AppTabs() {
           <TabTrigger name="favorites" href="/favorites" asChild>
             <TabButton>Saved ♥</TabButton>
           </TabTrigger>
+          <TabTrigger name="profile" href="/profile" asChild>
+            <TabButton>Profile</TabButton>
+          </TabTrigger>
         </CustomTabList>
       </TabList>
     </Tabs>
