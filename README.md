@@ -36,7 +36,16 @@ npm install          # from the repo root (npm workspaces)
 npm run mobile       # starts Expo (or: cd apps/mobile && npm start)
 ```
 
-You'll need a development build (EAS) for Clerk + Google Maps — see PLAN.md Phase 0.
+You'll need a development build (EAS) for Clerk + Google Maps:
+
+```bash
+npx eas-cli login                        # one-time — creates an Expo account if needed
+npx eas-cli init                         # links the project to EAS
+npx eas-cli build --profile development --platform android   # cloud build → install the APK on your phone
+npx expo start --dev-client              # then run the dev server
+```
+
+See PLAN.md Phase 0. The account-setup checklist for every service (Clerk, Neon, Cloudinary, Google, Resend, trigger.dev, Sentry, IntaSend) lives in [`.env.example`](./.env.example).
 
 ## Docs
 

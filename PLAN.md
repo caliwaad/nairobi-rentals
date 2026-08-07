@@ -1,7 +1,7 @@
 # 🏠 Nairobi Rentals — Implementation Plan
 
 > A Zillow-style rental marketplace for **Nairobi**. Browsers find apartments, realtors publish them, an admin moderates, and everyone pays (realtors) / contacts via WhatsApp (users).
-> Status: **Planning complete — approved. Ready to build (Phase 0).**
+> Status: **Phase 0 in progress** (started Aug 2026 — repo on GitHub, Expo SDK 57 scaffolded, EAS dev-build pipeline being set up).
 
 ---
 
@@ -81,7 +81,7 @@
 
 | Tool | Version / notes |
 |---|---|
-| Expo | SDK ~53 era, React Native ~0.77; **dev builds required** (not Expo Go) for Clerk + maps |
+| Expo | **SDK 57, React Native 0.86, React 19.2** (scaffolded Aug 2026); **dev builds required** — `expo-dev-client` + EAS (Expo Go can't run Clerk + maps) |
 | Clerk | `@clerk/clerk-expo`; Google + Apple OAuth on **both** platforms; webhooks `user.created/updated/deleted` → Neon (verify Svix signatures) |
 | Maps | `react-native-maps` + config plugin (per-platform Google Maps API keys) |
 | Images | `expo-image-picker` → backend-signed → `FileSystem.uploadAsync` to Cloudinary |
@@ -157,7 +157,7 @@
 | **M3** | 5–6 | Realtor onboarding + M-Pesa paywall + realtor dashboard + admin web dashboard | ~3 wks |
 | **M4** | 7–8 | Background jobs, Sentry, QA matrix, EAS builds, launch compliance | ~2 wks |
 
-**Phase 0 — Foundations:** monorepo (pnpm workspaces), Expo + Next.js apps, all accounts + env vars, EAS dev-build pipeline.
+**Phase 0 — Foundations:** monorepo (**npm workspaces** — pnpm not available on dev machine), Expo + Next.js apps, all accounts + env vars, EAS dev-build pipeline.
 **Phase 1 — Schema & data layer:** Drizzle models above, migration, seed script, `packages/shared` Zod schemas.
 **Phase 2 — Auth & profile:** Clerk in Expo (dev build, deep-link scheme, Google + Apple), webhook user sync, profile edit.
 **Phase 3 — Backend API:** all routes above + unit tests (filtering, review upsert/avg, webhook signature validation).

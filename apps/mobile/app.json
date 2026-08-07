@@ -9,9 +9,12 @@
     "description": "Rental marketplace for Nairobi — browse, filter, save, and review apartments.",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.nairobirentals.app",
+      "supportsTablet": false
     },
     "android": {
+      "package": "com.nairobirentals.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
