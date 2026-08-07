@@ -41,6 +41,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "86b18410-4e60-4bc6-9351-c87654c02fce"
+      }
+    },
+    "owner": "freeebandz"
   }
 }
