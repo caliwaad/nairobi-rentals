@@ -1,9 +1,12 @@
+import { useAuth, useUser } from '@clerk/expo';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { useClerkConfigured } from '@/components/auth-provider';
 import { ScreenContainer } from '@/components/screen-container';
+import { SignInScreen } from '@/components/sign-in-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
@@ -13,6 +16,56 @@ import { useFavoritesStore } from '@/store/favorites';
 import { useProfileStore } from '@/store/profile';
 
 export default function ProfileScreen() {
+  const clerkConfigured = useClerkConfigured();
+  if (!clerkConfigured) return <ClerkSetupNotice />;
+  return <ProfileGate />;
+}
+
+/** Shown before the Clerk key is configured — keeps the tab usable in dev. */
+function ClerkSetupNotice() {
+  return (
+    <ScreenContainer>
+      <View style={styles.setupNotice}>
+        <ThemedText style={styles.title}>Auth not configured yet</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.setupText}>
+          Add your Clerk publishable key to{' '}
+          <ThemedText type="code">apps/mobile/.env</ThemedText> to enable sign-in:
+        </ThemedText>
+        <ThemedView type="backgroundElement" style={styles.setupCode}>
+          <ThemedText type="code">EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_…</ThemedText>
+        </ThemedView>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.setupText}>
+          Create the app at dashboard.clerk.com, enable Google + Apple under SSO connections, then
+          restart the dev server. Full steps are in .env.example.
+        </ThemedText>
+      </View>
+    </ScreenContainer>
+  );
+}
+
+/** Gates the tab: loading → sign-in → profile. Only rendered when Clerk is configured. */
+function ProfileGate() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) {
+    return (
+      <ScreenContainer>
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" />
+        </View>
+      </ScreenContainer>
+    );
+  }
+  if (!isSignedIn) {
+    return (
+      <ScreenContainer>
+        <SignInScreen />
+      </ScreenContainer>
+    );
+  }
+  return <ProfileContent />;
+}
+
+function ProfileContent() {
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme !== 'light';
@@ -29,6 +82,26 @@ export default function ProfileScreen() {
     applyRealtor,
   } = useProfileStore();
   const savedCount = useFavoritesStore((s) => s.favoriteIds.length);
+
+  // Tie the local profile to the Clerk account: prefill once per account, reset on switch.
+  const { user } = useUser();
+  const { signOut } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    const state = useProfileStore.getState();
+    if (state.userId !== user.id) {
+      const fallback =
+        user.username ?? user.firstName ?? user.primaryEmailAddress?.emailAddress?.split('@')[0];
+      state.setUserId(user.id);
+      if (fallback) state.setUsername(fallback);
+      if (user.imageUrl) state.setAvatarUri(user.imageUrl);
+    }
+  }, [user]);
+
+  const handleSignOut = async () => {
+    useProfileStore.getState().reset();
+    await signOut();
+  };
 
   const [savedFlash, setSavedFlash] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -287,6 +360,14 @@ export default function ProfileScreen() {
             </ThemedText>
           </ThemedView>
         </View>
+
+        <Pressable
+          onPress={() => void handleSignOut()}
+          style={({ pressed }) => [styles.signOutButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out">
+          <ThemedText style={styles.signOutText}>Sign out</ThemedText>
+        </Pressable>
       </ScrollView>
 
       {/* Photo action sheet */}
@@ -500,6 +581,40 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: 800,
+  },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setupNotice: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+  },
+  setupText: {
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  setupCode: {
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    maxWidth: '100%',
+  },
+  signOutButton: {
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.5)',
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    marginTop: Spacing.three,
+  },
+  signOutText: {
+    color: '#DC2626',
+    fontWeight: 700,
   },
   sheetOverlay: {
     flex: 1,

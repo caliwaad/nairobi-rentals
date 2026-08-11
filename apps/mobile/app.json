@@ -29,6 +29,8 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
+      "@clerk/expo",
       [
         "expo-image-picker",
         {
@@ -43,7 +45,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "@clerk/expo",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
