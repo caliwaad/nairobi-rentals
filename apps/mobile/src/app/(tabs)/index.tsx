@@ -8,14 +8,10 @@ import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
-import {
-  EMPTY_FILTERS,
-  SAMPLE_LISTINGS,
-  matchesListing,
-  type ListingFilters,
-} from '@/data/sample-listings';
+import { EMPTY_FILTERS, matchesListing, type ListingFilters } from '@/data/sample-listings';
 
 import { useTheme } from '@/hooks/use-theme';
+import { useAllListings } from '@/store/listings';
 
 const ItemSeparator = () => <View style={styles.separator} />;
 
@@ -25,10 +21,11 @@ export default function HomeScreen() {
   const [filters, setFilters] = useState<ListingFilters>(EMPTY_FILTERS);
   const [filterVisible, setFilterVisible] = useState(false);
   const [query, setQuery] = useState('');
+  const allListings = useAllListings();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return SAMPLE_LISTINGS.filter((listing) => {
+    return allListings.filter((listing) => {
       if (!matchesListing(listing, filters)) return false;
       if (q) {
         const haystack = `${listing.title} ${listing.neighborhood} ${listing.address}`.toLowerCase();
@@ -36,7 +33,7 @@ export default function HomeScreen() {
       }
       return true;
     });
-  }, [filters, query]);
+  }, [filters, query, allListings]);
 
   const activeFilterCount = [filters.size, filters.maxPrice, filters.neighborhood].filter(
     (v) => v !== null,

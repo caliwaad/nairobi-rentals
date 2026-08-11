@@ -19,13 +19,13 @@ import { Brand, Spacing } from '@/constants/theme';
 import {
   buildRatingBreakdown,
   formatKES,
-  SAMPLE_LISTINGS,
   SIZE_LABELS,
   telLink,
   whatsappLink,
 } from '@/data/sample-listings';
 import { useTheme } from '@/hooks/use-theme';
 import { useFavoritesStore, useIsFavorite } from '@/store/favorites';
+import { useAllListings } from '@/store/listings';
 
 export default function ListingDetailScreen() {
   const theme = useTheme();
@@ -33,7 +33,8 @@ export default function ListingDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const listing = SAMPLE_LISTINGS.find((l) => l.id === id);
+  const allListings = useAllListings();
+  const listing = allListings.find((l) => l.id === id);
   const [heroWidth, setHeroWidth] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
   const saved = useIsFavorite(id ?? '');
@@ -194,17 +195,23 @@ export default function ListingDetailScreen() {
 
           {/* Amenities */}
           <Section title="What this home offers">
-            <View style={styles.chipWrap}>
-              {listing.amenities.map((amenity) => (
-                <View
-                  key={amenity}
-                  style={[styles.amenityChip, { backgroundColor: theme.backgroundSelected }]}>
-                  <ThemedText type="smallBold" themeColor="text" style={styles.amenityText}>
-                    {amenity}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
+            {listing.amenities.length > 0 ? (
+              <View style={styles.chipWrap}>
+                {listing.amenities.map((amenity) => (
+                  <View
+                    key={amenity}
+                    style={[styles.amenityChip, { backgroundColor: theme.backgroundSelected }]}>
+                    <ThemedText type="smallBold" themeColor="text" style={styles.amenityText}>
+                      {amenity}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary">
+                No amenities listed yet — contact the agent for details.
+              </ThemedText>
+            )}
           </Section>
 
           {/* Description */}
@@ -216,14 +223,20 @@ export default function ListingDetailScreen() {
 
           {/* House rules */}
           <Section title="What you should know">
-            <ThemedView type="backgroundElement" style={styles.rulesCard}>
-              {listing.houseRules.map((rule) => (
-                <View key={rule} style={styles.ruleRow}>
-                  <View style={[styles.ruleDot, { backgroundColor: Brand.primary }]} />
-                  <ThemedText type="small">{rule}</ThemedText>
-                </View>
-              ))}
-            </ThemedView>
+            {listing.houseRules.length > 0 ? (
+              <ThemedView type="backgroundElement" style={styles.rulesCard}>
+                {listing.houseRules.map((rule) => (
+                  <View key={rule} style={styles.ruleRow}>
+                    <View style={[styles.ruleDot, { backgroundColor: Brand.primary }]} />
+                    <ThemedText type="small">{rule}</ThemedText>
+                  </View>
+                ))}
+              </ThemedView>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary">
+                No house rules listed yet — ask the agent directly.
+              </ThemedText>
+            )}
           </Section>
 
           {/* Location */}
@@ -263,27 +276,35 @@ export default function ListingDetailScreen() {
               </View>
             </ThemedView>
 
-            {listing.reviews.map((review, i) => (
-              <ThemedView key={i} type="backgroundElement" style={styles.reviewCard}>
-                <View style={styles.reviewHeader}>
-                  <View style={[styles.avatar, { backgroundColor: Brand.primary }]}>
-                    <ThemedText type="smallBold" style={styles.whiteText}>
-                      {review.username.charAt(0).toUpperCase()}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.reviewMeta}>
-                    <ThemedText type="smallBold">{review.username}</ThemedText>
-                    <StarRating rating={review.stars} size={12} />
-                  </View>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {review.date}
-                  </ThemedText>
-                </View>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {review.comment}
+            {listing.reviews.length === 0 ? (
+              <ThemedView type="backgroundElement" style={styles.noReviewsCard}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.noReviewsText}>
+                  No reviews yet — be the first tenant to review this home.
                 </ThemedText>
               </ThemedView>
-            ))}
+            ) : (
+              listing.reviews.map((review, i) => (
+                <ThemedView key={i} type="backgroundElement" style={styles.reviewCard}>
+                  <View style={styles.reviewHeader}>
+                    <View style={[styles.avatar, { backgroundColor: Brand.primary }]}>
+                      <ThemedText type="smallBold" style={styles.whiteText}>
+                        {review.username.charAt(0).toUpperCase()}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.reviewMeta}>
+                      <ThemedText type="smallBold">{review.username}</ThemedText>
+                      <StarRating rating={review.stars} size={12} />
+                    </View>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {review.date}
+                    </ThemedText>
+                  </View>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {review.comment}
+                  </ThemedText>
+                </ThemedView>
+              ))
+            )}
           </Section>
         </View>
       </ScrollView>
@@ -520,6 +541,14 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     marginTop: Spacing.two,
     gap: Spacing.two,
+  },
+  noReviewsCard: {
+    borderRadius: Spacing.three,
+    padding: Spacing.four,
+    alignItems: 'center',
+  },
+  noReviewsText: {
+    textAlign: 'center',
   },
   reviewHeader: {
     flexDirection: 'row',

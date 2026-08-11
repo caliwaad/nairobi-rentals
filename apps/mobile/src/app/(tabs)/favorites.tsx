@@ -7,19 +7,20 @@ import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
-import { SAMPLE_LISTINGS } from '@/data/sample-listings';
 import { useTheme } from '@/hooks/use-theme';
 import { useFavoritesStore } from '@/store/favorites';
+import { useAllListings } from '@/store/listings';
 
 export default function FavoritesScreen() {
   const theme = useTheme();
   const router = useRouter();
   const favoriteIds = useFavoritesStore((s) => s.favoriteIds);
   const clearFavorites = useFavoritesStore((s) => s.clear);
+  const allListings = useAllListings();
 
   const saved = useMemo(
-    () => SAMPLE_LISTINGS.filter((listing) => favoriteIds.includes(listing.id)),
-    [favoriteIds],
+    () => allListings.filter((listing) => favoriteIds.includes(listing.id)),
+    [favoriteIds, allListings],
   );
 
   return (

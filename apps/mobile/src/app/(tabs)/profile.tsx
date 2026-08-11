@@ -1,6 +1,7 @@
 import { useAuth, useUser } from '@clerk/expo';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
@@ -69,6 +70,7 @@ function ProfileContent() {
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme !== 'light';
+  const router = useRouter();
   const {
     username,
     email,
@@ -329,11 +331,20 @@ function ProfileContent() {
           )}
 
           {realtorStatus === 'approved' && (
-            <View style={[styles.statusPill, { backgroundColor: pill.approved.bg }]}>
-              <ThemedText style={[styles.statusText, { color: pill.approved.fg }]}>
-                ✅ Realtor mode active — you can post listings
-              </ThemedText>
-            </View>
+            <>
+              <View style={[styles.statusPill, { backgroundColor: pill.approved.bg }]}>
+                <ThemedText style={[styles.statusText, { color: pill.approved.fg }]}>
+                  ✅ Realtor mode active — you can post listings
+                </ThemedText>
+              </View>
+              <Pressable
+                onPress={() => router.push('/new-listing')}
+                style={({ pressed }) => [styles.postListingButton, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Post a new listing">
+                <ThemedText style={styles.postListingButtonText}>＋  Post a new listing</ThemedText>
+              </Pressable>
+            </>
           )}
 
           {realtorStatus === 'rejected' && (
@@ -554,6 +565,18 @@ const styles = StyleSheet.create({
   realtorButtonText: {
     color: '#ffffff',
     fontWeight: 700,
+  },
+  postListingButton: {
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    backgroundColor: Brand.primary,
+    marginTop: Spacing.two,
+  },
+  postListingButtonText: {
+    color: '#ffffff',
+    fontWeight: 700,
+    fontSize: 15,
   },
   statusPill: {
     borderRadius: Spacing.two,
