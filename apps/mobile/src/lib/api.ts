@@ -172,6 +172,88 @@ export async function removeFavorite(listingId: string, token: string | null): P
   await mutateJson<{ favorited: boolean }>(`/api/favorites/${listingId}`, 'DELETE', token);
 }
 
+/** Payload for POST /api/listings (mirrors listingCreateSchema on the web). */
+export interface CreateListingInput {
+  title: string;
+  description: string;
+  price: number;
+  size: Listing['size'];
+  neighborhood: string;
+  addressText: string;
+  lat: number;
+  lng: number;
+  unitAmenities: string[];
+  houseRules: string[];
+  images: string[];
+}
+
+/**
+ * POST /api/listings — approved realtor publishes; the listing starts as
+ * `pending` and only reaches the feed after admin approval.
+ */
+export async function createListing(
+  input: CreateListingInput,
+  token: string | null,
+): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/listings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    throw new Error('Can’t reach the server — check your connection and try again.');
+  }
+  if (!res.ok) {
+    let message = 'Couldn’t publish the listing. Try again in a moment.';
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // keep the default
+    }
+    throw new Error(message);
+  }
+  const data = (await res.json()) as { listing?: { id: string } };
+  const id = data.listing?.id;
+  if (!id) throw new Error('The server didn’t return a listing id.');
+  return id;
+}
+
+/** PATCH /api/me — update contact fields (phone shows on the listing's buttons). */
+export async function updateProfile(
+  input: { phone?: string },
+  token: string | null,
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/me`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    throw new Error('Can’t reach the server — check your connection and try again.');
+  }
+  if (!res.ok) {
+    let message = 'Couldn’t save your contact details. Try again in a moment.';
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // keep the default
+    }
+    throw new Error(message);
+  }
+}
+
 /** POST /api/reviews — create/update the signed-in user's review (1–5, upsert). */
 export async function submitReview(
   listingId: string,

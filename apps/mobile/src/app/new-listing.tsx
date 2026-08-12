@@ -14,13 +14,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useGetToken } from '@/components/auth-provider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
-import { SIZE_LABELS, SIZES, type Listing, type ListingSize } from '@/data/sample-listings';
+import { SIZE_LABELS, SIZES, type ListingSize } from '@/data/sample-listings';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { useListingsStore } from '@/store/listings';
+import { createListing, updateProfile } from '@/lib/api';
 import { useProfileStore } from '@/store/profile';
 
 const AMENITY_PRESETS = [
@@ -46,14 +47,6 @@ const RULE_SUGGESTIONS = [
 ];
 
 const MAX_PHOTOS = 8;
-
-/** '07XX…' → '2547XX…' so WhatsApp deep links work internationally. */
-function toWhatsAppDigits(phone: string): string {
-  let digits = phone.replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('0')) digits = `254${digits.slice(1)}`;
-  return digits;
-}
 
 export default function NewListingScreen() {
   const realtorStatus = useProfileStore((s) => s.realtorStatus);
@@ -83,13 +76,38 @@ function NotApproved() {
   );
 }
 
+/** Shown after POST /api/listings succeeds — the listing is pending approval. */
+function SubmittedView({ title }: { title: string }) {
+  const router = useRouter();
+  return (
+    <ThemedView style={styles.container}>
+      <View style={styles.notApproved}>
+        <View style={styles.successIcon}>
+          <ThemedText style={styles.successIconGlyph}>✓</ThemedText>
+        </View>
+        <ThemedText style={styles.notApprovedTitle}>Submitted for review</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.notApprovedText}>
+          “{title}” is now pending admin approval. Once approved, it will appear on the home
+          feed for tenants to discover.
+        </ThemedText>
+        <Pressable
+          onPress={() => router.replace('/')}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}>
+          <ThemedText style={styles.submitButtonText}>← Back to homes</ThemedText>
+        </Pressable>
+      </View>
+    </ThemedView>
+  );
+}
+
 function ListingForm() {
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme !== 'light';
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const addListing = useListingsStore((s) => s.addListing);
+  const getToken = useGetToken();
   const profilePhone = useProfileStore((s) => s.phone);
 
   const [photos, setPhotos] = useState<string[]>([]);
@@ -108,6 +126,7 @@ function ListingForm() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
+  const [submitted, setSubmitted] = useState<string | null>(null);
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -201,33 +220,45 @@ function ListingForm() {
     setError(null);
     setSubmitting(true);
     try {
-      const listing: Listing = {
-        id: `lst-${Date.now().toString(36)}`,
-        title: title.trim(),
-        price: priceNum,
-        size,
-        neighborhood: neighborhood.trim(),
-        address: address.trim() || neighborhood.trim(),
-        // Nairobi city centre stand-in — precise pins come with Phase 3 geocoding.
-        lat: -1.2864,
-        lng: 36.8172,
-        rating: 0,
-        reviewCount: 0,
-        amenities: [...amenities],
-        houseRules: [...rules],
-        phone: phone.trim(),
-        whatsapp: toWhatsAppDigits(phone),
-        images: photos,
-        description: description.trim(),
-        reviews: [],
-      };
-      // In-memory publish now; Phase 3 syncs to Neon via the Listings API.
-      addListing(listing);
-      router.replace({ pathname: '/listing/[id]', params: { id: listing.id } });
+      const token = await getToken();
+      // The listing's Call/WhatsApp buttons use the realtor's profile phone —
+      // save it to the account when the form's number differs.
+      const phoneToSave = phone.trim();
+      if (phoneToSave && phoneToSave !== profilePhone) {
+        try {
+          await updateProfile({ phone: phoneToSave }, token);
+        } catch {
+          // Best-effort: don't block publishing over a contact-sync hiccup.
+        }
+      }
+      await createListing(
+        {
+          title: title.trim(),
+          description: description.trim(),
+          price: priceNum,
+          size,
+          neighborhood: neighborhood.trim(),
+          addressText: address.trim() || neighborhood.trim(),
+          // Nairobi city centre stand-in — precise pins come with Phase 3 geocoding.
+          lat: -1.2864,
+          lng: 36.8172,
+          unitAmenities: [...amenities],
+          houseRules: [...rules],
+          images: photos,
+        },
+        token,
+      );
+      setSubmitted(title.trim());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Couldn’t publish the listing. Try again.');
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (submitted) {
+    return <SubmittedView title={submitted} />;
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -848,6 +879,20 @@ const styles = StyleSheet.create({
   notApprovedTitle: {
     fontSize: 20,
     fontWeight: 700,
+  },
+  successIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successIconGlyph: {
+    color: '#ffffff',
+    fontSize: 30,
+    lineHeight: 34,
+    fontWeight: 800,
   },
   notApprovedText: {
     textAlign: 'center',

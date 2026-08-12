@@ -9,8 +9,8 @@ export type ListingsStatus = 'idle' | 'loading' | 'ready' | 'error';
 /**
  * API-backed listings state (Phase 4). Home fetches on mount; the store stays
  * the single client-side source so Favourites and Detail read the same data.
- * Locally published listings (realtor form) still prepend until publish is
- * wired to POST /api/listings.
+ * Realtor publishes go straight to POST /api/listings and start as `pending`,
+ * so they don't reach the feed until an admin approves and the app refetches.
  */
 interface ListingsState {
   listings: Listing[];
