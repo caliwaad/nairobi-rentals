@@ -300,6 +300,62 @@ export async function applyAsRealtor(token: string | null): Promise<void> {
   }
 }
 
+/** A realtor application as seen by an admin (GET /api/admin/realtors). */
+export interface AdminApplication {
+  id: string;
+  clerkId: string;
+  username: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  createdAt: string;
+}
+
+/** GET /api/admin/realtors — pending applications awaiting review. */
+export async function fetchPendingRealtors(token: string): Promise<AdminApplication[]> {
+  const data = await fetchJson<{ applications: AdminApplication[] }>(
+    '/api/admin/realtors',
+    token,
+  );
+  return data.applications;
+}
+
+/** POST /api/admin/realtors/:userId/approve — grant realtor access. */
+export async function approveRealtor(userId: string, token: string): Promise<void> {
+  await mutateJson(`/api/admin/realtors/${userId}/approve`, 'POST', token);
+}
+
+/** POST /api/admin/realtors/:userId/reject — decline an application. */
+export async function rejectRealtor(
+  userId: string,
+  reason: string | null,
+  token: string,
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/admin/realtors/${userId}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ reason }),
+    });
+  } catch {
+    throw new Error('Can’t reach the server — check your connection and try again.');
+  }
+  if (!res.ok) {
+    let message = 'Couldn’t update the application. Try again in a moment.';
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // keep the default
+    }
+    throw new Error(message);
+  }
+}
+
 /** POST /api/reviews — create/update the signed-in user's review (1–5, upsert). */
 export async function submitReview(
   listingId: string,

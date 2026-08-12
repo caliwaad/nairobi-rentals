@@ -12,6 +12,8 @@ import { fetchMe } from '@/lib/api';
  */
 export type RealtorStatus = 'pending' | 'approved' | 'rejected' | null;
 
+export type UserRole = 'user' | 'realtor' | 'admin';
+
 /** Values to merge into the store from the API (undefined = leave as-is). */
 export interface ProfilePatch {
   userId?: string;
@@ -20,6 +22,7 @@ export interface ProfilePatch {
   /** undefined = keep current; string/null = set or clear. */
   avatarUri?: string | null;
   realtorStatus?: RealtorStatus;
+  role?: UserRole;
 }
 
 type ProfileState = {
@@ -31,6 +34,8 @@ type ProfileState = {
   /** Local URI of the chosen profile photo (uploaded to Cloudinary in Phase 3). */
   avatarUri: string | null;
   realtorStatus: RealtorStatus;
+  /** 'admin' unlocks the admin console; 'realtor' the publish form. */
+  role: UserRole;
   setUserId: (userId: string) => void;
   setUsername: (username: string) => void;
   setEmail: (email: string) => void;
@@ -50,6 +55,7 @@ export const useProfileStore = create<ProfileState>()((set) => ({
   phone: '',
   avatarUri: null,
   realtorStatus: null,
+  role: 'user',
   setUserId: (userId) => set({ userId }),
   setUsername: (username) => set({ username }),
   setEmail: (email) => set({ email }),
@@ -63,9 +69,18 @@ export const useProfileStore = create<ProfileState>()((set) => ({
       phone: patch.phone ?? state.phone,
       avatarUri: patch.avatarUri === undefined ? state.avatarUri : patch.avatarUri,
       realtorStatus: patch.realtorStatus ?? state.realtorStatus,
+      role: patch.role ?? state.role,
     })),
   reset: () =>
-    set({ userId: null, username: '', email: '', phone: '', avatarUri: null, realtorStatus: null }),
+    set({
+      userId: null,
+      username: '',
+      email: '',
+      phone: '',
+      avatarUri: null,
+      realtorStatus: null,
+      role: 'user',
+    }),
 }));
 
 /** Pulls the server profile into the store once, when a session appears. */
@@ -86,6 +101,7 @@ function ProfileSyncInner() {
             phone: me.phone ?? '',
             avatarUri: me.avatarUrl ?? undefined,
             realtorStatus: me.realtorStatus,
+            role: me.role,
           });
         })
         .catch(() => {

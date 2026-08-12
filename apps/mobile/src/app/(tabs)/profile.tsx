@@ -78,6 +78,7 @@ function ProfileContent() {
     phone,
     avatarUri,
     realtorStatus,
+    role,
     setUsername,
     setEmail,
     setPhone,
@@ -435,6 +436,28 @@ function ProfileContent() {
             </View>
           )}
         </ThemedView>
+
+        {/* Admin console */}
+        {role === 'admin' && (
+          <>
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+              ADMIN
+            </ThemedText>
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedText style={styles.realtorTitle}>Realtor applications</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.realtorText}>
+                Approve or reject tenants who applied to become realtors.
+              </ThemedText>
+              <Pressable
+                onPress={() => router.push('/admin/realtors')}
+                style={({ pressed }) => [styles.realtorButton, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Review realtor applications">
+                <ThemedText style={styles.realtorButtonText}>Review applications</ThemedText>
+              </Pressable>
+            </ThemedView>
+          </>
+        )}
 
         {/* Stats */}
         <View style={styles.statsRow}>
