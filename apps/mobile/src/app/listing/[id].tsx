@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useGetToken } from '@/components/auth-provider';
 import { MapCard } from '@/components/map-card';
+import { ReviewForm } from '@/components/review-form';
 import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -30,7 +31,7 @@ import {
 import { useTheme } from '@/hooks/use-theme';
 import { fetchListing, fetchListingReviews } from '@/lib/api';
 import { useFavoritesStore, useIsFavorite } from '@/store/favorites';
-import { useAllListings } from '@/store/listings';
+import { useAllListings, useListingsStore } from '@/store/listings';
 
 export default function ListingDetailScreen() {
   const theme = useTheme();
@@ -72,6 +73,19 @@ export default function ListingDetailScreen() {
   const saved = useIsFavorite(id ?? '');
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const getToken = useGetToken();
+  const updateListing = useListingsStore((s) => s.updateListing);
+
+  /** After a review posts: refresh reviews + the listing (new rating/count). */
+  const refreshAfterReview = () => {
+    if (!id) return;
+    void fetchListingReviews(id).then((r) => setReviews(r));
+    void fetchListing(id).then((l) => {
+      if (l) {
+        setFetchedListing(l);
+        updateListing(l);
+      }
+    });
+  };
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -285,6 +299,8 @@ export default function ListingDetailScreen() {
 
           {/* Reviews */}
           <Section title="Reviews">
+            <ReviewForm listingId={listing.id} onSubmitted={refreshAfterReview} />
+
             <ThemedView type="backgroundElement" style={styles.ratingSummary}>
               <View style={styles.ratingLeft}>
                 <ThemedText style={styles.ratingBig}>{listing.rating.toFixed(1)}</ThemedText>

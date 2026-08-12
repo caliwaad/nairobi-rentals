@@ -19,6 +19,8 @@ interface ListingsState {
   error: string | null;
   fetchListings: () => Promise<void>;
   addListing: (listing: Listing) => void;
+  /** Replaces a listing in place (e.g. refreshed rating after a review). */
+  updateListing: (listing: Listing) => void;
 }
 
 export const useListingsStore = create<ListingsState>()((set, get) => ({
@@ -45,6 +47,11 @@ export const useListingsStore = create<ListingsState>()((set, get) => ({
   },
   addListing: (listing) =>
     set((state) => ({ userListings: [listing, ...state.userListings] })),
+  updateListing: (updated) =>
+    set((state) => ({
+      listings: state.listings.map((l) => (l.id === updated.id ? updated : l)),
+      userListings: state.userListings.map((l) => (l.id === updated.id ? updated : l)),
+    })),
 }));
 
 /**

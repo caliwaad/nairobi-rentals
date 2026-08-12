@@ -171,3 +171,35 @@ export async function addFavorite(listingId: string, token: string | null): Prom
 export async function removeFavorite(listingId: string, token: string | null): Promise<void> {
   await mutateJson<{ favorited: boolean }>(`/api/favorites/${listingId}`, 'DELETE', token);
 }
+
+/** POST /api/reviews — create/update the signed-in user's review (1–5, upsert). */
+export async function submitReview(
+  listingId: string,
+  stars: number,
+  comment: string,
+  token: string | null,
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ listingId, stars, comment }),
+    });
+  } catch {
+    throw new Error('Can’t reach the server — check your connection and try again.');
+  }
+  if (!res.ok) {
+    let message = 'Couldn’t save your review. Try again in a moment.';
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // keep the default
+    }
+    throw new Error(message);
+  }
+}
