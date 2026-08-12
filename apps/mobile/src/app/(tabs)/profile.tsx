@@ -425,6 +425,15 @@ function ProfileContent() {
                 accessibilityLabel="Post a new listing">
                 <ThemedText style={styles.postListingButtonText}>＋  Post a new listing</ThemedText>
               </Pressable>
+              <Pressable
+                onPress={() => router.push('/my-listings')}
+                style={({ pressed }) => [styles.myListingsButton, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel="My listings">
+                <ThemedText type="smallBold" style={styles.myListingsText}>
+                  📋  My listings
+                </ThemedText>
+              </Pressable>
             </>
           )}
 
@@ -684,6 +693,18 @@ const styles = StyleSheet.create({
   postListingButtonText: {
     color: '#ffffff',
     fontWeight: 700,
+    fontSize: 15,
+  },
+  myListingsButton: {
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: Brand.primary,
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
+    marginTop: Spacing.two,
+  },
+  myListingsText: {
+    color: Brand.primary,
     fontSize: 15,
   },
   statusPill: {

@@ -32,6 +32,9 @@ export interface ApiListing {
   images: string[];
   realtorUsername: string | null;
   realtorPhone: string | null;
+  /** Approval state — pending/rejected rows only show via /mine. */
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason: string | null;
 }
 
 interface ApiListResponse {
@@ -133,6 +136,12 @@ async function mutateJson<T>(
 export async function fetchListings(): Promise<Listing[]> {
   const data = await fetchJson<ApiListResponse>('/api/listings');
   return data.listings.map(apiListingToListing);
+}
+
+/** GET /api/listings/mine — the signed-in user's own listings (all statuses). */
+export async function fetchMyListings(token: string): Promise<ApiListing[]> {
+  const data = await fetchJson<{ listings: ApiListing[] }>('/api/listings/mine', token);
+  return data.listings;
 }
 
 /** GET /api/listings/:id — a single listing (for the detail screen). */

@@ -1,6 +1,14 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useGetToken } from '@/components/auth-provider';
@@ -66,6 +74,9 @@ function ReviewQueue() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<AdminApplication | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -86,22 +97,38 @@ function ReviewQueue() {
     void load();
   }, [load]);
 
-  const act = async (app: AdminApplication, action: 'approve' | 'reject') => {
+  const approve = async (app: AdminApplication) => {
     setBusyId(app.id);
     setFlash(null);
     try {
       const token = await getToken();
       if (!token) throw new Error('Sign in again to review applications.');
-      if (action === 'approve') {
-        await approveRealtor(app.id, token);
-      } else {
-        await rejectRealtor(app.id, null, token);
-      }
+      await approveRealtor(app.id, token);
       setApplications((current) => current.filter((a) => a.id !== app.id));
       const name = app.username ?? app.name ?? 'Applicant';
-      setFlash(`${name} ${action === 'approve' ? 'approved ✓' : 'rejected'}`);
+      setFlash(`${name} approved ✓`);
     } catch (e) {
       setFlash(e instanceof Error ? e.message : 'Couldn’t update the application.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const confirmReject = async () => {
+    if (!rejectTarget) return;
+    const app = rejectTarget;
+    setBusyId(app.id);
+    setFlash(null);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Sign in again to review applications.');
+      await rejectRealtor(app.id, rejectReason.trim() || null, token);
+      setApplications((current) => current.filter((a) => a.id !== app.id));
+      const name = app.username ?? app.name ?? 'Applicant';
+      setFlash(`${name} rejected`);
+      setRejectTarget(null);
+    } catch (e) {
+      setRejectError(e instanceof Error ? e.message : 'Couldn’t reject the application.');
     } finally {
       setBusyId(null);
     }
@@ -172,6 +199,69 @@ function ReviewQueue() {
           </ThemedView>
         )}
 
+        {/* Reject reason sheet */}
+        <Modal
+          visible={rejectTarget !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setRejectTarget(null)}>
+          <Pressable style={styles.sheetOverlay} onPress={() => setRejectTarget(null)}>
+            <Pressable style={[styles.sheetCard, { backgroundColor: theme.background }]} onPress={() => {}}>
+              <ThemedText style={styles.sheetTitle}>Reject application</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {rejectTarget ? (rejectTarget.username ?? rejectTarget.name ?? 'Applicant') : ''} —
+                the reason is shown to them on their profile.
+              </ThemedText>
+              <TextInput
+                value={rejectReason}
+                onChangeText={setRejectReason}
+                placeholder="Reason (optional)…"
+                placeholderTextColor={theme.textSecondary}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                style={[
+                  styles.reasonInput,
+                  {
+                    color: theme.text,
+                    borderColor: theme.backgroundSelected,
+                  },
+                ]}
+                accessibilityLabel="Rejection reason"
+              />
+              {rejectError && (
+                <ThemedText type="small" style={styles.errorText}>
+                  {rejectError}
+                </ThemedText>
+              )}
+              <Pressable
+                onPress={() => void confirmReject()}
+                disabled={busyId !== null}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm rejection"
+                style={({ pressed }) => [styles.rejectConfirmButton, pressed && styles.pressed]}>
+                {busyId !== null ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <ThemedText type="smallBold" style={styles.approveText}>
+                    Reject application
+                  </ThemedText>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => setRejectTarget(null)}
+                disabled={busyId !== null}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+                style={({ pressed }) => [styles.sheetCancel, pressed && styles.pressed]}>
+                <ThemedText type="smallBold" themeColor="textSecondary">
+                  Cancel
+                </ThemedText>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
         {status === 'ready' &&
           applications.map((app) => {
             const name = app.username ?? app.name ?? 'Applicant';
@@ -198,7 +288,11 @@ function ReviewQueue() {
                 </View>
                 <View style={styles.actionsRow}>
                   <Pressable
-                    onPress={() => void act(app, 'reject')}
+                    onPress={() => {
+                      setRejectReason('');
+                      setRejectError(null);
+                      setRejectTarget(app);
+                    }}
                     disabled={busyId !== null}
                     accessibilityRole="button"
                     accessibilityLabel={`Reject ${name}`}
@@ -215,7 +309,7 @@ function ReviewQueue() {
                     )}
                   </Pressable>
                   <Pressable
-                    onPress={() => void act(app, 'approve')}
+                    onPress={() => void approve(app)}
                     disabled={busyId !== null}
                     accessibilityRole="button"
                     accessibilityLabel={`Approve ${name}`}
@@ -342,6 +436,46 @@ const styles = StyleSheet.create({
   },
   approveText: {
     color: '#ffffff',
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  sheetCard: {
+    width: '100%',
+    maxWidth: 520,
+    borderTopLeftRadius: Spacing.four,
+    borderTopRightRadius: Spacing.four,
+    padding: Spacing.three,
+    paddingBottom: Spacing.five,
+    gap: Spacing.two,
+  },
+  sheetTitle: {
+    fontSize: 17,
+    fontWeight: 700,
+    textAlign: 'center',
+    marginBottom: Spacing.one,
+  },
+  reasonInput: {
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 15,
+    minHeight: 80,
+  },
+  rejectConfirmButton: {
+    borderRadius: Spacing.two,
+    backgroundColor: '#DC2626',
+    paddingVertical: Spacing.two + 2,
+    alignItems: 'center',
+    marginTop: Spacing.one,
+  },
+  sheetCancel: {
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
   },
   primaryButton: {
     borderRadius: Spacing.two,
