@@ -7,7 +7,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput,
 
 import { useClerkConfigured } from '@/components/auth-provider';
 import { ScreenContainer } from '@/components/screen-container';
-import { updateProfile } from '@/lib/api';
+import { applyAsRealtor, updateProfile } from '@/lib/api';
 import { SignInScreen } from '@/components/sign-in-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -110,6 +110,8 @@ function ProfileContent() {
   const [savedFlash, setSavedFlash] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -119,6 +121,21 @@ function ProfileContent() {
       if (flashTimer.current) clearTimeout(flashTimer.current);
     };
   }, []);
+
+  const handleApply = async () => {
+    setApplyError(null);
+    setApplying(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Sign in again to apply.');
+      await applyAsRealtor(token);
+      applyRealtor(); // local store → pending pill
+    } catch (e) {
+      setApplyError(e instanceof Error ? e.message : 'Couldn’t submit your application.');
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaveError(null);
@@ -360,13 +377,29 @@ function ProfileContent() {
           </ThemedText>
 
           {realtorStatus === null && (
-            <Pressable
-              onPress={applyRealtor}
-              style={({ pressed }) => [styles.realtorButton, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Apply to become a realtor">
-              <ThemedText style={styles.realtorButtonText}>Apply to become a realtor</ThemedText>
-            </Pressable>
+            <>
+              <Pressable
+                onPress={() => void handleApply()}
+                disabled={applying}
+                style={({ pressed }) => [
+                  styles.realtorButton,
+                  { backgroundColor: applying ? Brand.primaryStrong : Brand.primary },
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Apply to become a realtor">
+                {applying ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <ThemedText style={styles.realtorButtonText}>Apply to become a realtor</ThemedText>
+                )}
+              </Pressable>
+              {applyError && (
+                <ThemedText type="small" style={styles.saveError}>
+                  {applyError}
+                </ThemedText>
+              )}
+            </>
           )}
 
           {realtorStatus === 'pending' && (

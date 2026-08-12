@@ -277,6 +277,29 @@ export async function updateProfile(
   return data.user;
 }
 
+/** POST /api/realtor/apply — apply to become a realtor (persists as pending). */
+export async function applyAsRealtor(token: string | null): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/realtor/apply`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+  } catch {
+    throw new Error('Can’t reach the server — check your connection and try again.');
+  }
+  if (!res.ok) {
+    let message = 'Couldn’t submit your application. Try again in a moment.';
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // keep the default
+    }
+    throw new Error(message);
+  }
+}
+
 /** POST /api/reviews — create/update the signed-in user's review (1–5, upsert). */
 export async function submitReview(
   listingId: string,
