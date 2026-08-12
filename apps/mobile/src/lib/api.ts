@@ -320,6 +320,60 @@ export interface AdminApplication {
   createdAt: string;
 }
 
+/** A pending listing as seen by an admin (GET /api/admin/listings). */
+export interface AdminListing {
+  id: string;
+  title: string;
+  price: number;
+  size: Listing['size'];
+  neighborhood: string;
+  images: string[];
+  realtorUsername: string | null;
+  createdAt: string;
+}
+
+/** GET /api/admin/listings — pending listings awaiting approval. */
+export async function fetchPendingListings(token: string): Promise<AdminListing[]> {
+  const data = await fetchJson<{ listings: AdminListing[] }>('/api/admin/listings', token);
+  return data.listings;
+}
+
+/** POST /api/admin/listings/:id/approve — make a listing live. */
+export async function approveListing(id: string, token: string): Promise<void> {
+  await mutateJson(`/api/admin/listings/${id}/approve`, 'POST', token);
+}
+
+/** POST /api/admin/listings/:id/reject — decline with an optional reason. */
+export async function rejectListing(
+  id: string,
+  reason: string | null,
+  token: string,
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/admin/listings/${id}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ reason }),
+    });
+  } catch {
+    throw new Error('Can’t reach the server — check your connection and try again.');
+  }
+  if (!res.ok) {
+    let message = 'Couldn’t update the listing. Try again in a moment.';
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // keep the default
+    }
+    throw new Error(message);
+  }
+}
+
 /** GET /api/admin/realtors — pending applications awaiting review. */
 export async function fetchPendingRealtors(token: string): Promise<AdminApplication[]> {
   const data = await fetchJson<{ applications: AdminApplication[] }>(

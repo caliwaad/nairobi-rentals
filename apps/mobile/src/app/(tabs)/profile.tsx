@@ -453,16 +453,25 @@ function ProfileContent() {
               ADMIN
             </ThemedText>
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText style={styles.realtorTitle}>Realtor applications</ThemedText>
+              <ThemedText style={styles.realtorTitle}>Admin console</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.realtorText}>
-                Approve or reject tenants who applied to become realtors.
+                Approve realtor applications and new listings.
               </ThemedText>
               <Pressable
                 onPress={() => router.push('/admin/realtors')}
                 style={({ pressed }) => [styles.realtorButton, pressed && styles.pressed]}
                 accessibilityRole="button"
                 accessibilityLabel="Review realtor applications">
-                <ThemedText style={styles.realtorButtonText}>Review applications</ThemedText>
+                <ThemedText style={styles.realtorButtonText}>Realtor applications</ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/admin/listings')}
+                style={({ pressed }) => [styles.myListingsButton, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Review pending listings">
+                <ThemedText type="smallBold" style={styles.myListingsText}>
+                  Pending listings
+                </ThemedText>
               </Pressable>
             </ThemedView>
           </>
