@@ -22,6 +22,7 @@ import { SIZE_LABELS, SIZES, type ListingSize } from '@/data/sample-listings';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { createListing, updateProfile } from '@/lib/api';
+import { isHostedUri, uploadImage } from '@/lib/cloudinary';
 import { useProfileStore } from '@/store/profile';
 
 const AMENITY_PRESETS = [
@@ -125,6 +126,7 @@ function ListingForm() {
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadText, setUploadText] = useState<string | null>(null);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
   const [submitted, setSubmitted] = useState<string | null>(null);
 
@@ -231,6 +233,14 @@ function ListingForm() {
           // Best-effort: don't block publishing over a contact-sync hiccup.
         }
       }
+      // Upload picker photos to Cloudinary so they load on every device.
+      const hostedImages: string[] = [];
+      for (let i = 0; i < photos.length; i++) {
+        const uri = photos[i];
+        setUploadText(`Uploading photos ${i + 1}/${photos.length}…`);
+        hostedImages.push(isHostedUri(uri) ? uri : await uploadImage(uri, 'nairobi-rentals/listings'));
+      }
+      setUploadText('Publishing…');
       await createListing(
         {
           title: title.trim(),
@@ -244,7 +254,7 @@ function ListingForm() {
           lng: 36.8172,
           unitAmenities: [...amenities],
           houseRules: [...rules],
-          images: photos,
+          images: hostedImages,
         },
         token,
       );
@@ -253,6 +263,7 @@ function ListingForm() {
       setError(e instanceof Error ? e.message : 'Couldn’t publish the listing. Try again.');
     } finally {
       setSubmitting(false);
+      setUploadText(null);
     }
   };
 
@@ -602,6 +613,12 @@ function ListingForm() {
           </ThemedText>
         )}
 
+        {uploadText && (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.uploadText}>
+            {uploadText}
+          </ThemedText>
+        )}
+
         <Pressable
           onPress={() => void handlePublish()}
           disabled={submitting}
@@ -820,6 +837,9 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#DC2626',
+    textAlign: 'center',
+  },
+  uploadText: {
     textAlign: 'center',
   },
   submitButton: {

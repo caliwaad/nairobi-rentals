@@ -8,6 +8,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput,
 import { useClerkConfigured } from '@/components/auth-provider';
 import { ScreenContainer } from '@/components/screen-container';
 import { applyAsRealtor, updateProfile } from '@/lib/api';
+import { isHostedUri, uploadImage } from '@/lib/cloudinary';
 import { SignInScreen } from '@/components/sign-in-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -144,11 +145,19 @@ function ProfileContent() {
     try {
       const token = await getToken();
       if (!token) throw new Error('Sign in again to save your profile.');
+      // Local picker URI → upload to Cloudinary so the avatar works on every
+      // device. Clerk's Google/Apple image is already a hosted URL — keep it.
+      let avatarUrl: string | undefined;
+      if (avatarUri) {
+        avatarUrl = isHostedUri(avatarUri)
+          ? avatarUri
+          : await uploadImage(avatarUri, 'nairobi-rentals/avatars');
+      }
       const updated = await updateProfile(
         {
           username: username.trim() || undefined,
           phone: phone.trim() || undefined,
-          avatarUrl: avatarUri ?? undefined,
+          avatarUrl,
         },
         token,
       );
