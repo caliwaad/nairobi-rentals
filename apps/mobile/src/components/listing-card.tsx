@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { memo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { useGetToken } from '@/components/auth-provider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
@@ -18,7 +19,12 @@ export const ListingCard = memo(function ListingCard({ listing, onPress }: Listi
   const theme = useTheme();
   const saved = useIsFavorite(listing.id);
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
+  const getToken = useGetToken();
   const [imageFailed, setImageFailed] = useState(false);
+
+  const onToggleSave = () => {
+    void getToken().then((token) => toggleFavorite(listing.id, token));
+  };
 
   return (
     // Wrapper keeps the save button a *sibling* of the card button — on web,
@@ -95,7 +101,7 @@ export const ListingCard = memo(function ListingCard({ listing, onPress }: Listi
       </Pressable>
 
       <Pressable
-        onPress={() => toggleFavorite(listing.id)}
+        onPress={onToggleSave}
         hitSlop={12}
         accessibilityRole="button"
         accessibilityLabel={saved ? 'Remove from saved' : 'Save listing'}

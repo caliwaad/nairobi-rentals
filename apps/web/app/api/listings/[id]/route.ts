@@ -2,7 +2,7 @@ import { and, eq, getTableColumns } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getDb } from '@/db';
-import { listingImages, listings } from '@/db/schema';
+import { listingImages, listings, users } from '@/db/schema';
 import { handleRouteError, jsonError, jsonOk } from '@/lib/auth';
 import { ratingColumns } from '@/lib/query';
 
@@ -21,8 +21,14 @@ export async function GET(
 
     const db = getDb();
     const rows = await db
-      .select({ ...getTableColumns(listings), ...ratingColumns })
+      .select({
+        ...getTableColumns(listings),
+        ...ratingColumns,
+        realtorUsername: users.username,
+        realtorPhone: users.phone,
+      })
       .from(listings)
+      .innerJoin(users, eq(listings.realtorId, users.id))
       .where(and(eq(listings.id, id), eq(listings.status, 'approved')));
 
     const listing = rows[0];

@@ -1,4 +1,4 @@
-import { ClerkProvider } from '@clerk/expo';
+import { useAuth, ClerkProvider } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { createContext, useContext, type ReactNode } from 'react';
 
@@ -9,6 +9,25 @@ const ClerkConfigContext = createContext(Boolean(publishableKey));
 /** True when EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is set and Clerk is active. */
 export function useClerkConfigured() {
   return useContext(ClerkConfigContext);
+}
+
+type GetToken = () => Promise<string | null>;
+
+/** No-op default so non-Clerk builds never crash on a missing provider. */
+const GetTokenContext = createContext<GetToken>(async () => null);
+
+/**
+ * Returns the Clerk session token getter, or a no-op when Clerk isn't
+ * configured. Safe to call anywhere — even outside ClerkProvider.
+ */
+export function useGetToken(): GetToken {
+  return useContext(GetTokenContext);
+}
+
+/** Bridges the real useAuth().getToken into the context. Rendered inside ClerkProvider. */
+function ClerkTokenBridge({ children }: { children: ReactNode }) {
+  const { getToken } = useAuth();
+  return <GetTokenContext.Provider value={getToken}>{children}</GetTokenContext.Provider>;
 }
 
 /**
@@ -23,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <ClerkConfigContext.Provider value={true}>
       <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-        {children}
+        <ClerkTokenBridge>{children}</ClerkTokenBridge>
       </ClerkProvider>
     </ClerkConfigContext.Provider>
   );

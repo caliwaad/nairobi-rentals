@@ -2,7 +2,7 @@ import { count, eq, getTableColumns, inArray } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getDb } from '@/db';
-import { listingImages, listings, type ListingSize } from '@/db/schema';
+import { listingImages, listings, users, type ListingSize } from '@/db/schema';
 import {
   handleRouteError,
   jsonError,
@@ -45,8 +45,14 @@ export async function GET(request: NextRequest) {
 
     const [rows, totals] = await Promise.all([
       db
-        .select({ ...getTableColumns(listings), ...ratingColumns })
+        .select({
+          ...getTableColumns(listings),
+          ...ratingColumns,
+          realtorUsername: users.username,
+          realtorPhone: users.phone,
+        })
         .from(listings)
+        .innerJoin(users, eq(listings.realtorId, users.id))
         .where(where)
         .orderBy(...listingOrderBy(q.sort ?? 'newest'))
         .limit(pageSize)

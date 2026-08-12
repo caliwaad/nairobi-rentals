@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
+import { useGetToken } from '@/components/auth-provider';
 import { ListingCard } from '@/components/listing-card';
 import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
@@ -9,13 +10,15 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useFavoritesStore } from '@/store/favorites';
-import { useAllListings } from '@/store/listings';
+import { useAllListings, useFetchListingsOnMount } from '@/store/listings';
 
 export default function FavoritesScreen() {
   const theme = useTheme();
   const router = useRouter();
   const favoriteIds = useFavoritesStore((s) => s.favoriteIds);
   const clearFavorites = useFavoritesStore((s) => s.clear);
+  const getToken = useGetToken();
+  useFetchListingsOnMount();
   const allListings = useAllListings();
 
   const saved = useMemo(
@@ -34,7 +37,7 @@ export default function FavoritesScreen() {
             </View>
             {saved.length > 0 && (
               <Pressable
-                onPress={clearFavorites}
+                onPress={() => void getToken().then((token) => clearFavorites(token))}
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Clear all saved homes">

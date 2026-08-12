@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Linking,
   Pressable,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useGetToken } from '@/components/auth-provider';
 import { MapCard } from '@/components/map-card';
 import { StarRating } from '@/components/star-rating';
 import { ThemedText } from '@/components/themed-text';
@@ -22,8 +24,11 @@ import {
   SIZE_LABELS,
   telLink,
   whatsappLink,
+  type Listing,
+  type Review,
 } from '@/data/sample-listings';
 import { useTheme } from '@/hooks/use-theme';
+import { fetchListing, fetchListingReviews } from '@/lib/api';
 import { useFavoritesStore, useIsFavorite } from '@/store/favorites';
 import { useAllListings } from '@/store/listings';
 
@@ -34,11 +39,39 @@ export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const allListings = useAllListings();
-  const listing = allListings.find((l) => l.id === id);
+  const storeListing = allListings.find((l) => l.id === id);
+  const [fetchedListing, setFetchedListing] = useState<Listing | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [heroWidth, setHeroWidth] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const listing = fetchedListing ?? storeListing;
+
+  // Deep link / refresh: the listing may not be in the feed store yet.
+  useEffect(() => {
+    if (!id || storeListing) return;
+    let cancelled = false;
+    void fetchListing(id).then((l) => {
+      if (!cancelled) setFetchedListing(l);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, storeListing]);
+
+  // Reviews come from their own endpoint — the feed embeds none.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    void fetchListingReviews(id).then((r) => {
+      if (!cancelled) setReviews(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
   const saved = useIsFavorite(id ?? '');
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
+  const getToken = useGetToken();
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -52,7 +85,11 @@ export default function ListingDetailScreen() {
     return (
       <ThemedView style={styles.container}>
         <View style={styles.notFound}>
+          <ActivityIndicator size="large" color={Brand.primary} />
           <ThemedText style={styles.notFoundTitle}>Listing not found</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            It may have been removed, or your connection dropped.
+          </ThemedText>
           <Pressable
             onPress={goBack}
             accessibilityRole="button"
@@ -92,7 +129,9 @@ export default function ListingDetailScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => listing && toggleFavorite(listing.id)}
+            onPress={() =>
+              listing && void getToken().then((token) => toggleFavorite(listing.id, token))
+            }
             accessibilityRole="button"
             accessibilityLabel={saved ? 'Remove from saved' : 'Save listing'}
             accessibilityState={{ selected: saved }}
@@ -276,14 +315,14 @@ export default function ListingDetailScreen() {
               </View>
             </ThemedView>
 
-            {listing.reviews.length === 0 ? (
+            {(reviews.length > 0 ? reviews : listing.reviews).length === 0 ? (
               <ThemedView type="backgroundElement" style={styles.noReviewsCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.noReviewsText}>
                   No reviews yet — be the first tenant to review this home.
                 </ThemedText>
               </ThemedView>
             ) : (
-              listing.reviews.map((review, i) => (
+              (reviews.length > 0 ? reviews : listing.reviews).map((review, i) => (
                 <ThemedView key={i} type="backgroundElement" style={styles.reviewCard}>
                   <View style={styles.reviewHeader}>
                     <View style={[styles.avatar, { backgroundColor: Brand.primary }]}>

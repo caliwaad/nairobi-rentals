@@ -1,6 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { FilterSheet } from '@/components/filter-sheet';
 import { ListingCard } from '@/components/listing-card';
@@ -11,7 +18,7 @@ import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
 import { EMPTY_FILTERS, matchesListing, type ListingFilters } from '@/data/sample-listings';
 
 import { useTheme } from '@/hooks/use-theme';
-import { useAllListings } from '@/store/listings';
+import { useAllListings, useFetchListingsOnMount, useListingsStore } from '@/store/listings';
 
 const ItemSeparator = () => <View style={styles.separator} />;
 
@@ -21,6 +28,9 @@ export default function HomeScreen() {
   const [filters, setFilters] = useState<ListingFilters>(EMPTY_FILTERS);
   const [filterVisible, setFilterVisible] = useState(false);
   const [query, setQuery] = useState('');
+  const status = useFetchListingsOnMount();
+  const error = useListingsStore((s) => s.error);
+  const fetchListings = useListingsStore((s) => s.fetchListings);
   const allListings = useAllListings();
 
   const filtered = useMemo(() => {
@@ -100,7 +110,30 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
 
-          <FlatList
+          {status === 'idle' || status === 'loading' ? (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="large" color={Brand.primary} />
+              <ThemedText type="small" themeColor="textSecondary">
+                Loading homes…
+              </ThemedText>
+            </View>
+          ) : status === 'error' ? (
+            <ThemedView type="backgroundElement" style={styles.errorState}>
+              <ThemedText style={styles.errorTitle}>Couldn’t load homes</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.errorText}>
+                {error}
+              </ThemedText>
+              <Pressable
+                onPress={() => void fetchListings()}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
+                <ThemedText type="smallBold" style={styles.retryText}>
+                  Try again
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
+          ) : (
+            <FlatList
             data={filtered}
             keyExtractor={(listing) => listing.id}
             renderItem={({ item }) => (
@@ -114,25 +147,26 @@ export default function HomeScreen() {
             ItemSeparatorComponent={ItemSeparator}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <ThemedView type="backgroundElement" style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>No homes match your filters</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  Try a different size, price range, or neighbourhood.
-                </ThemedText>
-                <Pressable
-                  onPress={() => {
-                    setFilters(EMPTY_FILTERS);
-                    setQuery('');
-                  }}
-                  style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}>
-                  <ThemedText type="smallBold" style={styles.clearButtonText}>
-                    Clear all filters
+              ListEmptyComponent={
+                <ThemedView type="backgroundElement" style={styles.emptyState}>
+                  <ThemedText style={styles.emptyTitle}>No homes match your filters</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                    Try a different size, price range, or neighbourhood.
                   </ThemedText>
-                </Pressable>
-              </ThemedView>
-            }
-          />
+                  <Pressable
+                    onPress={() => {
+                      setFilters(EMPTY_FILTERS);
+                      setQuery('');
+                    }}
+                    style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}>
+                    <ThemedText type="smallBold" style={styles.clearButtonText}>
+                      Clear all filters
+                    </ThemedText>
+                  </Pressable>
+                </ThemedView>
+              }
+            />
+          )}
       </ScreenContainer>
 
       <FilterSheet
@@ -221,6 +255,38 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: Spacing.three,
+  },
+  loadingState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.six,
+  },
+  errorState: {
+    alignItems: 'center',
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+  },
+  errorTitle: {
+    fontSize: 17,
+    fontWeight: 700,
+    textAlign: 'center',
+  },
+  errorText: {
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: Spacing.two,
+    backgroundColor: Brand.primary,
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.two + 2,
+    paddingHorizontal: Spacing.four,
+  },
+  retryText: {
+    color: '#ffffff',
   },
   emptyState: {
     alignItems: 'center',
