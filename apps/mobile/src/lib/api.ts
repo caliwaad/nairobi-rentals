@@ -224,11 +224,32 @@ export async function createListing(
   return id;
 }
 
-/** PATCH /api/me — update contact fields (phone shows on the listing's buttons). */
+/** Raw shape of GET /api/me — the signed-in user's profile row. */
+export interface ApiMe {
+  id: string;
+  clerkId: string;
+  username: string | null;
+  name: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  role: 'user' | 'realtor' | 'admin';
+  realtorStatus: 'pending' | 'approved' | 'rejected' | null;
+}
+
+/** GET /api/me — the signed-in user's profile (realtor status lives here). */
+export async function fetchMe(token: string | null): Promise<ApiMe> {
+  const data = await fetchJson<{ user: ApiMe }>('/api/me', token);
+  return data.user;
+}
+
+/**
+ * PATCH /api/me — update profile fields (username, phone, avatarUrl).
+ * Returns the updated user so callers can hydrate their local store.
+ */
 export async function updateProfile(
-  input: { phone?: string },
+  input: { username?: string; phone?: string; avatarUrl?: string },
   token: string | null,
-): Promise<void> {
+): Promise<ApiMe> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}/api/me`, {
@@ -243,7 +264,7 @@ export async function updateProfile(
     throw new Error('Can’t reach the server — check your connection and try again.');
   }
   if (!res.ok) {
-    let message = 'Couldn’t save your contact details. Try again in a moment.';
+    let message = 'Couldn’t save your profile. Try again in a moment.';
     try {
       const body = (await res.json()) as { error?: string };
       if (body.error) message = body.error;
@@ -252,6 +273,8 @@ export async function updateProfile(
     }
     throw new Error(message);
   }
+  const data = (await res.json()) as { user: ApiMe };
+  return data.user;
 }
 
 /** POST /api/reviews — create/update the signed-in user's review (1–5, upsert). */

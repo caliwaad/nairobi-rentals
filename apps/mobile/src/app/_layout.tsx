@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider } from '@/components/auth-provider';
 import { FavoritesSync } from '@/store/favorites';
+import { ProfileSync } from '@/store/profile';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -15,6 +16,7 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AnimatedSplashOverlay />
         <FavoritesSync />
+        <ProfileSync />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="listing/[id]" />

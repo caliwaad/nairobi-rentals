@@ -7,6 +7,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput,
 
 import { useClerkConfigured } from '@/components/auth-provider';
 import { ScreenContainer } from '@/components/screen-container';
+import { updateProfile } from '@/lib/api';
 import { SignInScreen } from '@/components/sign-in-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -85,9 +86,10 @@ function ProfileContent() {
   } = useProfileStore();
   const savedCount = useFavoritesStore((s) => s.favoriteIds.length);
 
-  // Tie the local profile to the Clerk account: prefill once per account, reset on switch.
+  // Tie the local profile to the Clerk account: gap-fill from Clerk only when
+  // the API hasn't supplied a value yet (the DB is the source of truth).
   const { user } = useUser();
-  const { signOut } = useAuth();
+  const { signOut, getToken } = useAuth();
   useEffect(() => {
     if (!user) return;
     const state = useProfileStore.getState();
@@ -95,8 +97,8 @@ function ProfileContent() {
       const fallback =
         user.username ?? user.firstName ?? user.primaryEmailAddress?.emailAddress?.split('@')[0];
       state.setUserId(user.id);
-      if (fallback) state.setUsername(fallback);
-      if (user.imageUrl) state.setAvatarUri(user.imageUrl);
+      if (!state.username && fallback) state.setUsername(fallback);
+      if (!state.avatarUri && user.imageUrl) state.setAvatarUri(user.imageUrl);
     }
   }, [user]);
 
@@ -106,6 +108,8 @@ function ProfileContent() {
   };
 
   const [savedFlash, setSavedFlash] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -116,10 +120,35 @@ function ProfileContent() {
     };
   }, []);
 
-  const handleSave = () => {
-    setSavedFlash(true);
-    if (flashTimer.current) clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setSavedFlash(false), 1600);
+  const handleSave = async () => {
+    setSaveError(null);
+    setSaving(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Sign in again to save your profile.');
+      const updated = await updateProfile(
+        {
+          username: username.trim() || undefined,
+          phone: phone.trim() || undefined,
+          avatarUrl: avatarUri ?? undefined,
+        },
+        token,
+      );
+      // Hydrate from the server's response so the store matches the DB.
+      useProfileStore.getState().hydrate({
+        userId: updated.clerkId,
+        username: updated.username ?? '',
+        phone: updated.phone ?? '',
+        avatarUri: updated.avatarUrl ?? undefined,
+      });
+      setSavedFlash(true);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setSavedFlash(false), 1600);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Couldn’t save your profile. Try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const initial = username.trim().charAt(0).toUpperCase();
@@ -290,16 +319,34 @@ function ProfileContent() {
         </ThemedView>
 
         <Pressable
-          onPress={handleSave}
+          onPress={() => void handleSave()}
+          disabled={saving}
           style={({ pressed }) => [
             styles.saveButton,
-            { backgroundColor: savedFlash ? Brand.primaryStrong : Brand.primary },
+            {
+              backgroundColor: savedFlash
+                ? Brand.primaryStrong
+                : saving
+                  ? Brand.primaryStrong
+                  : Brand.primary,
+            },
             pressed && styles.pressed,
           ]}
           accessibilityRole="button"
           accessibilityLabel="Save changes">
-          <ThemedText style={styles.saveButtonText}>{savedFlash ? 'Saved ✓' : 'Save changes'}</ThemedText>
+          {saving ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <ThemedText style={styles.saveButtonText}>
+              {savedFlash ? 'Saved ✓' : 'Save changes'}
+            </ThemedText>
+          )}
         </Pressable>
+        {saveError && (
+          <ThemedText type="small" style={styles.saveError}>
+            {saveError}
+          </ThemedText>
+        )}
 
         {/* For realtors */}
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
@@ -547,6 +594,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 700,
     fontSize: 16,
+  },
+  saveError: {
+    color: '#DC2626',
+    textAlign: 'center',
+    marginTop: Spacing.one,
   },
   realtorTitle: {
     fontSize: 17,
