@@ -243,6 +243,8 @@ export interface ApiMe {
   avatarUrl: string | null;
   role: 'user' | 'realtor' | 'admin';
   realtorStatus: 'pending' | 'approved' | 'rejected' | null;
+  /** Why a realtor application was declined (admin-set). */
+  rejectionReason: string | null;
 }
 
 /** GET /api/me — the signed-in user's profile (realtor status lives here). */

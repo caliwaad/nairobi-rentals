@@ -23,6 +23,8 @@ export interface ProfilePatch {
   avatarUri?: string | null;
   realtorStatus?: RealtorStatus;
   role?: UserRole;
+  /** Why the realtor application was declined (shown on the profile). */
+  rejectionReason?: string | null;
 }
 
 type ProfileState = {
@@ -36,6 +38,7 @@ type ProfileState = {
   realtorStatus: RealtorStatus;
   /** 'admin' unlocks the admin console; 'realtor' the publish form. */
   role: UserRole;
+  rejectionReason: string | null;
   setUserId: (userId: string) => void;
   setUsername: (username: string) => void;
   setEmail: (email: string) => void;
@@ -56,6 +59,7 @@ export const useProfileStore = create<ProfileState>()((set) => ({
   avatarUri: null,
   realtorStatus: null,
   role: 'user',
+  rejectionReason: null,
   setUserId: (userId) => set({ userId }),
   setUsername: (username) => set({ username }),
   setEmail: (email) => set({ email }),
@@ -70,6 +74,8 @@ export const useProfileStore = create<ProfileState>()((set) => ({
       avatarUri: patch.avatarUri === undefined ? state.avatarUri : patch.avatarUri,
       realtorStatus: patch.realtorStatus ?? state.realtorStatus,
       role: patch.role ?? state.role,
+      rejectionReason:
+        patch.rejectionReason === undefined ? state.rejectionReason : patch.rejectionReason,
     })),
   reset: () =>
     set({
@@ -80,6 +86,7 @@ export const useProfileStore = create<ProfileState>()((set) => ({
       avatarUri: null,
       realtorStatus: null,
       role: 'user',
+      rejectionReason: null,
     }),
 }));
 
@@ -102,6 +109,7 @@ function ProfileSyncInner() {
             avatarUri: me.avatarUrl ?? undefined,
             realtorStatus: me.realtorStatus,
             role: me.role,
+            rejectionReason: me.rejectionReason,
           });
         })
         .catch(() => {

@@ -80,6 +80,7 @@ function ProfileContent() {
     avatarUri,
     realtorStatus,
     role,
+    rejectionReason,
     setUsername,
     setEmail,
     setPhone,
@@ -447,11 +448,22 @@ function ProfileContent() {
           )}
 
           {realtorStatus === 'rejected' && (
-            <View style={[styles.statusPill, { backgroundColor: pill.rejected.bg }]}>
-              <ThemedText style={[styles.statusText, { color: pill.rejected.fg }]}>
-                ✕ Application not approved — contact support for details
-              </ThemedText>
-            </View>
+            <>
+              <View style={[styles.statusPill, { backgroundColor: pill.rejected.bg }]}>
+                <ThemedText style={[styles.statusText, { color: pill.rejected.fg }]}>
+                  ✕ Application not approved
+                </ThemedText>
+              </View>
+              {rejectionReason ? (
+                <ThemedText type="small" themeColor="textSecondary" style={styles.rejectionReason}>
+                  Reason: {rejectionReason}
+                </ThemedText>
+              ) : (
+                <ThemedText type="small" themeColor="textSecondary" style={styles.rejectionReason}>
+                  Contact support for details.
+                </ThemedText>
+              )}
+            </>
           )}
         </ThemedView>
 
@@ -734,6 +746,9 @@ const styles = StyleSheet.create({
   statusText: {
     fontWeight: 600,
     fontSize: 14,
+    textAlign: 'center',
+  },
+  rejectionReason: {
     textAlign: 'center',
   },
   statsRow: {
