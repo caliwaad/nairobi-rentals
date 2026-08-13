@@ -7,7 +7,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput,
 
 import { useClerkConfigured } from '@/components/auth-provider';
 import { ScreenContainer } from '@/components/screen-container';
-import { applyAsRealtor, updateProfile } from '@/lib/api';
+import { applyAsRealtor, fetchSubscriptionStatus, updateProfile } from '@/lib/api';
 import { isHostedUri, uploadImage } from '@/lib/cloudinary';
 import { SignInScreen } from '@/components/sign-in-screen';
 import { ThemedText } from '@/components/themed-text';
@@ -428,6 +428,7 @@ function ProfileContent() {
                   ✅ Realtor mode active — you can post listings
                 </ThemedText>
               </View>
+              <SubscriptionStatusCard />
               <Pressable
                 onPress={() => router.push('/new-listing')}
                 style={({ pressed }) => [styles.postListingButton, pressed && styles.pressed]}
@@ -583,6 +584,94 @@ function ProfileContent() {
         </Pressable>
       </Modal>
     </ScreenContainer>
+  );
+}
+
+/** Phase 5 — subscription state for approved realtors (drives the publish paywall). */
+function SubscriptionStatusCard() {
+  const router = useRouter();
+  const subscription = useProfileStore((s) => s.subscription);
+  const setSubscription = useProfileStore((s) => s.setSubscription);
+  const { getToken } = useAuth();
+  const scheme = useColorScheme();
+  const isDark = scheme !== 'light';
+
+  const pill = {
+    pending: isDark ? { bg: 'rgba(180, 83, 9, 0.18)', fg: '#FBBF24' } : { bg: '#FEF3C7', fg: '#B45309' },
+    approved: isDark
+      ? { bg: 'rgba(4, 120, 87, 0.2)', fg: '#34D399' }
+      : { bg: '#D1FAE5', fg: '#047857' },
+    rejected: isDark
+      ? { bg: 'rgba(185, 28, 28, 0.2)', fg: '#F87171' }
+      : { bg: '#FEE2E2', fg: '#B91C1C' },
+  } as const;
+
+  useEffect(() => {
+    let cancelled = false;
+    void getToken().then((token) => {
+      if (!token) return;
+      void fetchSubscriptionStatus(token)
+        .then((s) => {
+          if (!cancelled) setSubscription(s);
+        })
+        .catch(() => {
+          // Leave whatever the store has; the gate handles both states.
+        });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!subscription?.configured) return null;
+  const sub = subscription.subscription;
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const active = sub?.status === 'active';
+  const pending = sub?.status === 'pending';
+  const label = active
+    ? `✅ Subscription active until ${formatDate(sub?.currentPeriodEnd ?? null)}`
+    : pending
+      ? '⏳ Payment in progress — check your phone for the M-Pesa prompt'
+      : sub
+        ? 'Subscription lapsed — renew to keep posting'
+        : 'Not subscribed yet — subscribe to publish listings';
+
+  return (
+    <View style={styles.subRow}>
+      <View
+        style={[
+          styles.subPill,
+          { backgroundColor: active ? pill.approved.bg : pending ? pill.pending.bg : pill.rejected.bg },
+        ]}>
+        <ThemedText
+          style={[
+            styles.statusText,
+            { color: active ? pill.approved.fg : pending ? pill.pending.fg : pill.rejected.fg },
+          ]}>
+          {label}
+        </ThemedText>
+      </View>
+      {!active && !pending && (
+        <Pressable
+          onPress={() => router.push('/new-listing')}
+          style={({ pressed }) => [styles.myListingsButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Subscribe via M-Pesa">
+          <ThemedText type="smallBold" style={styles.myListingsText}>
+            💳  Subscribe via M-Pesa — KES {subscription.price.toLocaleString()}/mo
+          </ThemedText>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -750,6 +839,16 @@ const styles = StyleSheet.create({
   },
   rejectionReason: {
     textAlign: 'center',
+  },
+  subRow: {
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  subPill: {
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
   },
   statsRow: {
     flexDirection: 'row',

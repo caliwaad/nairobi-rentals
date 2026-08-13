@@ -4,6 +4,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -13,8 +14,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 /**
- * PLAN.md §7 data model — core tables only for now.
- * `subscriptions` and `nearby_places_cache` arrive with Phases 5 & 7.
+ * PLAN.md §7 data model — core tables (subscriptions arrived with Phase 5).
+ * `nearby_places_cache` arrives with Phase 7.
  *
  * Hard rule (PLAN §6): this schema is only ever written through the API
  * routes in this app — no direct DB access from the mobile client.
@@ -34,11 +35,13 @@ export const listingSizes = [
   'standalone',
 ] as const;
 export const listingStatuses = ['pending', 'approved', 'rejected', 'archived'] as const;
+export const subscriptionStatuses = ['pending', 'active', 'expired', 'failed'] as const;
 
 export type UserRole = (typeof userRoles)[number];
 export type RealtorStatus = (typeof realtorStatuses)[number];
 export type ListingSize = (typeof listingSizes)[number];
 export type ListingStatus = (typeof listingStatuses)[number];
+export type SubscriptionStatus = (typeof subscriptionStatuses)[number];
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -150,4 +153,36 @@ export const favorites = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.listingId] })],
+);
+
+/**
+ * One row per realtor — the latest subscription state (PLAN §7).
+ * M-Pesa has no auto-recurring: each renewal is a fresh STK push (Phase 5),
+ * so `history` keeps the full payment trail for audits + renewal reminders.
+ */
+export const subscriptions = pgTable(
+  'subscriptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    realtorId: uuid('realtor_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** IntaSend api_ref — the idempotency key webhook events are matched on. */
+    providerRef: text('provider_ref'),
+    /** IntaSend invoice id (informational — api_ref is the source of truth). */
+    invoiceId: text('invoice_id'),
+    status: text('status', { enum: subscriptionStatuses }).notNull().default('pending'),
+    /** KES actually charged (listed price + 3% M-Pesa fee, rounded up). */
+    amount: integer('amount').notNull(),
+    currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+    lastPaymentAt: timestamp('last_payment_at', { withTimezone: true }),
+    /** JSON array of past payment events (audits + renewal reminders). */
+    history: jsonb('history').notNull().default(sql`'[]'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('subscriptions_realtor_unique').on(t.realtorId),
+    index('subscriptions_status_idx').on(t.status),
+  ],
 );

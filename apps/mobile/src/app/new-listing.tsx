@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useGetToken } from '@/components/auth-provider';
+import { SubscribeGate } from '@/components/subscribe-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Brand, Spacing } from '@/constants/theme';
@@ -52,7 +53,13 @@ const MAX_PHOTOS = 8;
 export default function NewListingScreen() {
   const realtorStatus = useProfileStore((s) => s.realtorStatus);
   if (realtorStatus !== 'approved') return <NotApproved />;
-  return <ListingForm />;
+  // Phase 5 paywall — an active subscription unlocks the form (graceful when
+  // payments aren't configured yet).
+  return (
+    <SubscribeGate>
+      <ListingForm />
+    </SubscribeGate>
+  );
 }
 
 /** Shown when someone lands here without an approved realtor account. */

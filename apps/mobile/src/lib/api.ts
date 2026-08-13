@@ -421,6 +421,64 @@ export async function rejectRealtor(
   }
 }
 
+/** Shape of GET /api/subscription/status (Phase 5 — realtor paywall). */
+export interface SubscriptionStatus {
+  configured: boolean;
+  /** KES listed price (what the realtor sees). */
+  price: number;
+  subscription: {
+    status: 'pending' | 'active' | 'expired' | 'failed';
+    amount: number;
+    currentPeriodEnd: string | null;
+    lastPaymentAt: string | null;
+  } | null;
+}
+
+/** GET /api/subscription/status — the approved realtor's subscription state. */
+export async function fetchSubscriptionStatus(token: string | null): Promise<SubscriptionStatus> {
+  return fetchJson<SubscriptionStatus>('/api/subscription/status', token);
+}
+
+/** Shape of POST /api/subscribe — an M-Pesa STK push was initiated. */
+export interface SubscribeResult {
+  alreadyActive?: boolean;
+  subscription: {
+    id: string;
+    status: 'pending' | 'active' | 'expired' | 'failed';
+    amount: number;
+    invoiceId: string | null;
+  };
+  pushed?: {
+    invoiceId: string | null;
+    apiRef: string | null;
+    state: string | null;
+  } | null;
+}
+
+/** POST /api/subscribe — trigger an M-Pesa STK push for the monthly subscription. */
+export async function subscribe(token: string | null): Promise<SubscribeResult> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/subscribe`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+  } catch {
+    throw new Error('Can’t reach the server — check your connection and try again.');
+  }
+  if (!res.ok) {
+    let message = 'Couldn’t start the payment. Try again in a moment.';
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {
+      // keep the default
+    }
+    throw new Error(message);
+  }
+  return (await res.json()) as SubscribeResult;
+}
+
 /** POST /api/reviews — create/update the signed-in user's review (1–5, upsert). */
 export async function submitReview(
   listingId: string,

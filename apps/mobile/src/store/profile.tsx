@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { create } from 'zustand';
 
 import { useClerkConfigured } from '@/components/auth-provider';
-import { fetchMe } from '@/lib/api';
+import { fetchMe, fetchSubscriptionStatus, type SubscriptionStatus } from '@/lib/api';
 
 /**
  * Matches PLAN.md `users` model: username (self-chosen, shown on reviews),
@@ -25,6 +25,8 @@ export interface ProfilePatch {
   role?: UserRole;
   /** Why the realtor application was declined (shown on the profile). */
   rejectionReason?: string | null;
+  /** Phase 5 — the realtor's subscription (paywall gate). */
+  subscription?: SubscriptionStatus | null;
 }
 
 type ProfileState = {
@@ -39,6 +41,9 @@ type ProfileState = {
   /** 'admin' unlocks the admin console; 'realtor' the publish form. */
   role: UserRole;
   rejectionReason: string | null;
+  /** Phase 5 — subscription state (null until fetched; drives the publish paywall). */
+  subscription: SubscriptionStatus | null;
+  setSubscription: (subscription: SubscriptionStatus | null) => void;
   setUserId: (userId: string) => void;
   setUsername: (username: string) => void;
   setEmail: (email: string) => void;
@@ -60,6 +65,8 @@ export const useProfileStore = create<ProfileState>()((set) => ({
   realtorStatus: null,
   role: 'user',
   rejectionReason: null,
+  subscription: null,
+  setSubscription: (subscription) => set({ subscription }),
   setUserId: (userId) => set({ userId }),
   setUsername: (username) => set({ username }),
   setEmail: (email) => set({ email }),
@@ -76,6 +83,8 @@ export const useProfileStore = create<ProfileState>()((set) => ({
       role: patch.role ?? state.role,
       rejectionReason:
         patch.rejectionReason === undefined ? state.rejectionReason : patch.rejectionReason,
+      subscription:
+        patch.subscription === undefined ? state.subscription : patch.subscription,
     })),
   reset: () =>
     set({
@@ -87,6 +96,7 @@ export const useProfileStore = create<ProfileState>()((set) => ({
       realtorStatus: null,
       role: 'user',
       rejectionReason: null,
+      subscription: null,
     }),
 }));
 
@@ -114,6 +124,12 @@ function ProfileSyncInner() {
         })
         .catch(() => {
           // Keep whatever we have locally; the profile screen stays usable.
+        });
+      // Phase 5 — warm the subscription state so the publish paywall is instant.
+      void fetchSubscriptionStatus(token)
+        .then((status) => useProfileStore.getState().setSubscription(status))
+        .catch(() => {
+          // Payments may be unconfigured — the gate handles both cases.
         });
     });
   }, [isLoaded, isSignedIn, getToken]);

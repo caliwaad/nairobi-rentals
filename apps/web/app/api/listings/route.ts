@@ -2,13 +2,21 @@ import { count, eq, getTableColumns, inArray } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getDb } from '@/db';
-import { listingImages, listings, users, type ListingSize } from '@/db/schema';
+import {
+  listingImages,
+  listings,
+  subscriptions,
+  users,
+  type ListingSize,
+} from '@/db/schema';
 import {
   handleRouteError,
   jsonError,
   jsonOk,
   requireApprovedRealtor,
 } from '@/lib/auth';
+import { intasendConfigured } from '@/lib/intasend';
+import { isActiveAt } from '@/lib/subscription';
 import { andWhere, buildListingWhere, listingOrderBy, ratingColumns } from '@/lib/query';
 import { listingCreateSchema, listingQuerySchema } from '@/lib/validation';
 
@@ -91,6 +99,27 @@ export async function POST(request: NextRequest) {
   try {
     const authed = await requireApprovedRealtor();
     if (!authed.ok) return authed.response;
+
+    // Phase 5 paywall: once IntaSend is configured, an active subscription is
+    // required to publish (PLAN §5 — lapsed payment = posting locked). When
+    // payments aren't configured the gate is open so development keeps working.
+    if (intasendConfigured()) {
+      const db0 = getDb();
+      const sub = await db0.query.subscriptions.findFirst({
+        where: eq(subscriptions.realtorId, authed.user.id),
+      });
+      if (
+        !isActiveAt(
+          { status: sub?.status ?? null, currentPeriodEnd: sub?.currentPeriodEnd ?? null },
+          new Date(),
+        )
+      ) {
+        return jsonError(
+          'An active subscription is required to publish. Subscribe on the Profile tab.',
+          402,
+        );
+      }
+    }
 
     const body = await request.json().catch(() => null);
     const parsed = listingCreateSchema.safeParse(body);

@@ -1,7 +1,7 @@
 # 🏠 Nairobi Rentals — Implementation Plan
 
 > A Zillow-style rental marketplace for **Nairobi**. Browsers find apartments, realtors publish them, an admin moderates, and everyone pays (realtors) / contacts via WhatsApp (users).
-> Status: **Phase 0 in progress** (started Aug 2026 — repo on GitHub, Expo SDK 57 scaffolded, EAS dev-build pipeline being set up).
+> Status: **Phases 0–4 + most of 5 done** (Aug 2026). Built: monorepo, Neon schema (users/listings/reviews/favorites/subscriptions), Clerk auth + webhook, full browse feed + detail + favorites + reviews + Cloudinary uploads, realtor apply/approve + admin queues, EAS Android preview APK + iOS simulator build, API deployed to Vercel. **Phase 5 payments:** IntaSend M-Pesa STK push + webhook + paywall built and tested (needs sandbox keys to go live). Remaining: Phase 7 background jobs (trigger.dev), Phase 8 hardening (Sentry, account deletion, QA), maps/nearby, live-payment test.
 
 ---
 
