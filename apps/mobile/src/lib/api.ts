@@ -421,6 +421,31 @@ export async function rejectRealtor(
   }
 }
 
+/** A nearby facility (schools, churches, supermarkets, malls) — GET /api/listings/:id/nearby. */
+export interface NearbyPlace {
+  name: string;
+  category: 'school' | 'church' | 'supermarket' | 'shopping_mall';
+  vicinity: string;
+  rating: number | null;
+  userRatingCount: number | null;
+  distanceKm: number;
+  lat: number;
+  lng: number;
+}
+
+export interface NearbyResponse {
+  configured: boolean;
+  mapImageUrl: string | null;
+  nearby: NearbyPlace[];
+  source: 'cache' | 'live' | 'stale-cache' | 'error' | 'unconfigured';
+  error?: string;
+}
+
+/** GET /api/listings/:id/nearby — map pin image + nearby facilities (cache-first server-side). */
+export async function fetchNearby(listingId: string): Promise<NearbyResponse> {
+  return fetchJson<NearbyResponse>(`/api/listings/${listingId}/nearby`);
+}
+
 /** Shape of GET /api/subscription/status (Phase 5 — realtor paywall). */
 export interface SubscriptionStatus {
   configured: boolean;

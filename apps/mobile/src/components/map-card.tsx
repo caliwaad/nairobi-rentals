@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -7,10 +8,12 @@ import { type Listing } from '@/data/sample-listings';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
- * Stylized map placeholder — real Google Maps (react-native-maps) lands in Phase 4
- * once API keys are configured. This keeps the detail screen complete today.
+ * Listing map. When the API has a Google key it renders a real static-map
+ * image with the pin (server-built — the key never ships to the client) plus
+ * an "Open in Google Maps" deep link. Without a key it falls back to the
+ * stylized placeholder so the screen stays complete during development.
  */
-export function MapCard({ listing }: { listing: Listing }) {
+export function MapCard({ listing, mapImageUrl }: { listing: Listing; mapImageUrl?: string | null }) {
   const theme = useTheme();
 
   const openInMaps = () => {
@@ -21,7 +24,17 @@ export function MapCard({ listing }: { listing: Listing }) {
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      <View style={[styles.map, { backgroundColor: theme.backgroundSelected }]}>
+      {mapImageUrl ? (
+        <Pressable onPress={openInMaps} accessibilityRole="link" accessibilityLabel="View map">
+          <Image
+            source={{ uri: mapImageUrl }}
+            style={styles.mapImage}
+            contentFit="cover"
+            transition={200}
+          />
+        </Pressable>
+      ) : (
+        <View style={[styles.map, { backgroundColor: theme.backgroundSelected }]}>
         {[16, 32, 48, 64, 80].map((left) => (
           <View
             key={`v${left}`}
@@ -54,7 +67,8 @@ export function MapCard({ listing }: { listing: Listing }) {
             {listing.neighborhood}
           </ThemedText>
         </View>
-      </View>
+        </View>
+      )}
 
       <View style={styles.addressRow}>
         <ThemedText type="small" themeColor="textSecondary">
@@ -83,6 +97,10 @@ const styles = StyleSheet.create({
   map: {
     height: 160,
     overflow: 'hidden',
+  },
+  mapImage: {
+    width: '100%',
+    height: 180,
   },
   gridLineV: {
     position: 'absolute',

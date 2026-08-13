@@ -14,8 +14,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 /**
- * PLAN.md §7 data model — core tables (subscriptions arrived with Phase 5).
- * `nearby_places_cache` arrives with Phase 7.
+ * PLAN.md §7 data model — core tables (subscriptions arrived with Phase 5,
+ * nearby_places_cache with the maps work).
  *
  * Hard rule (PLAN §6): this schema is only ever written through the API
  * routes in this app — no direct DB access from the mobile client.
@@ -139,6 +139,19 @@ export const reviews = pgTable(
     uniqueIndex('reviews_listing_user_unique').on(t.listingId, t.userId),
     index('reviews_listing_idx').on(t.listingId),
   ],
+);
+
+export const nearbyPlacesCache = pgTable(
+  'nearby_places_cache',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** Rounded "lat,lng" grid key — the cost-saver (PLAN §7, assumption #5). */
+    key: text('key').notNull().unique(),
+    /** Normalized nearby-places array (what GET /api/listings/:id/nearby returns). */
+    payload: jsonb('payload').notNull(),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('nearby_cache_key_idx').on(t.key)],
 );
 
 export const favorites = pgTable(

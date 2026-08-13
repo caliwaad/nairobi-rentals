@@ -29,7 +29,7 @@ import {
   type Review,
 } from '@/data/sample-listings';
 import { useTheme } from '@/hooks/use-theme';
-import { fetchListing, fetchListingReviews } from '@/lib/api';
+import { fetchListing, fetchListingReviews, fetchNearby, type NearbyResponse } from '@/lib/api';
 import { useFavoritesStore, useIsFavorite } from '@/store/favorites';
 import { useAllListings, useListingsStore } from '@/store/listings';
 
@@ -43,6 +43,8 @@ export default function ListingDetailScreen() {
   const storeListing = allListings.find((l) => l.id === id);
   const [fetchedListing, setFetchedListing] = useState<Listing | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [nearby, setNearby] = useState<NearbyResponse | null>(null);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
   const [heroWidth, setHeroWidth] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
   const listing = fetchedListing ?? storeListing;
@@ -66,6 +68,26 @@ export default function ListingDetailScreen() {
     void fetchListingReviews(id).then((r) => {
       if (!cancelled) setReviews(r);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  // Nearby facilities + the map pin image (cache-first server-side).
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setNearbyLoading(true);
+    void fetchNearby(id)
+      .then((n) => {
+        if (!cancelled) setNearby(n);
+      })
+      .catch(() => {
+        // Keep the placeholder map; the section shows its empty state.
+      })
+      .finally(() => {
+        if (!cancelled) setNearbyLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -294,8 +316,49 @@ export default function ListingDetailScreen() {
 
           {/* Location */}
           <Section title="Location">
-            <MapCard listing={listing} />
+            <MapCard listing={listing} mapImageUrl={nearby?.mapImageUrl} />
           </Section>
+
+          {/* Nearby places */}
+          {nearby?.configured && (
+            <Section title="Nearby">
+              {nearbyLoading ? (
+                <View style={styles.nearbyLoading}>
+                  <ActivityIndicator size="small" color={Brand.primary} />
+                </View>
+              ) : nearby.nearby.length > 0 ? (
+                <ThemedView type="backgroundElement" style={styles.nearbyCard}>
+                  {nearby.nearby.map((place, i) => (
+                    <View
+                      key={`${place.name}-${i}`}
+                      style={[styles.nearbyRow, i > 0 && styles.nearbyRowBorder]}>
+                      <ThemedText style={styles.nearbyIcon}>{NEARBY_ICONS[place.category]}</ThemedText>
+                      <View style={styles.nearbyInfo}>
+                        <ThemedText type="smallBold" numberOfLines={1}>
+                          {place.name}
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                          {NEARBY_LABELS[place.category]}
+                          {place.vicinity ? ` · ${place.vicinity}` : ''}
+                        </ThemedText>
+                      </View>
+                      <ThemedText type="small" themeColor="textSecondary" style={styles.nearbyDistance}>
+                        {place.distanceKm < 1
+                          ? `${Math.round(place.distanceKm * 1000)} m`
+                          : `${place.distanceKm.toFixed(1)} km`}
+                      </ThemedText>
+                    </View>
+                  ))}
+                </ThemedView>
+              ) : (
+                <ThemedView type="backgroundElement" style={styles.nearbyEmpty}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.nearbyEmptyText}>
+                    No nearby facilities found yet.
+                  </ThemedText>
+                </ThemedView>
+              )}
+            </Section>
+          )}
 
           {/* Reviews */}
           <Section title="Reviews">
@@ -410,6 +473,21 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     </View>
   );
 }
+
+/** Category → emoji + label (mirrors the server's NEARBY_CATEGORIES). */
+const NEARBY_ICONS: Record<string, string> = {
+  school: '🏫',
+  church: '⛪',
+  supermarket: '🛒',
+  shopping_mall: '🛍️',
+};
+
+const NEARBY_LABELS: Record<string, string> = {
+  school: 'School',
+  church: 'Church',
+  supermarket: 'Supermarket',
+  shopping_mall: 'Mall',
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -654,6 +732,43 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
+  },
+  nearbyLoading: {
+    paddingVertical: Spacing.four,
+    alignItems: 'center',
+  },
+  nearbyCard: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+  },
+  nearbyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.two + 2,
+  },
+  nearbyRowBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(128,128,128,0.25)',
+  },
+  nearbyIcon: {
+    fontSize: 18,
+    lineHeight: 22,
+  },
+  nearbyInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  nearbyDistance: {
+    fontSize: 12,
+  },
+  nearbyEmpty: {
+    borderRadius: Spacing.three,
+    padding: Spacing.four,
+    alignItems: 'center',
+  },
+  nearbyEmptyText: {
+    textAlign: 'center',
   },
   notFound: {
     flex: 1,
