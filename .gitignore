@@ -23,6 +23,8 @@ out/
 .DS_Store
 Thumbs.db
 *.log
+.idea/
+.vscode/
 
 # Local databases
 *.db
