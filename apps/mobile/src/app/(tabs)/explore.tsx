@@ -1,180 +1,189 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ExternalLink } from '@/components/external-link';
+import { ScreenContainer } from '@/components/screen-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
+import {
+  EMPTY_FILTERS,
+  NEIGHBORHOODS,
+  SIZES,
+  SIZE_LABELS,
+  type ListingFilters,
+  type ListingSize,
+} from '@/data/sample-listings';
 import { useTheme } from '@/hooks/use-theme';
+import { useBrowseStore } from '@/store/browse';
+import { useAllListings, useFetchListingsOnMount } from '@/store/listings';
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
+interface ChipProps {
+  label: string;
+  count: number;
+  onPress: () => void;
+}
+
+function Chip({ label, count, onPress }: ChipProps) {
   const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.chip,
+        { backgroundColor: theme.backgroundElement },
+        pressed && styles.pressed,
+      ]}>
+      <ThemedText type="small">{label}</ThemedText>
+      <View style={[styles.countBadge, { backgroundColor: theme.backgroundSelected }]}>
+        <ThemedText type="small" themeColor="textSecondary">
+          {count}
+        </ThemedText>
+      </View>
+    </Pressable>
+  );
+}
 
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
+/**
+ * Explore Nairobi — browse the feed by neighbourhood or home size.
+ * Tapping a chip hands the filter to the Home tab (via the browse store)
+ * and navigates there, so the request becomes the active Home filters.
+ */
+export default function ExploreScreen() {
+  const theme = useTheme();
+  const router = useRouter();
+  useFetchListingsOnMount();
+  const allListings = useAllListings();
+
+  const neighborhoodCounts = useMemo(() => {
+    // Seed the static list so chips show even before the feed loads.
+    const counts = new Map<string, number>(NEIGHBORHOODS.map((n) => [n, 0]));
+    for (const listing of allListings) {
+      counts.set(listing.neighborhood, (counts.get(listing.neighborhood) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [allListings]);
+
+  const sizeCounts = useMemo(() => {
+    const counts = new Map<ListingSize, number>(SIZES.map((s) => [s, 0]));
+    for (const listing of allListings) {
+      counts.set(listing.size, (counts.get(listing.size) ?? 0) + 1);
+    }
+    return [...counts.entries()];
+  }, [allListings]);
+
+  const browse = (filters: ListingFilters) => {
+    useBrowseStore.getState().request(filters);
+    router.navigate('/');
+  };
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
+    <ScreenContainer>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.headerText}>
+            <ThemedText style={styles.title}>Explore Nairobi</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Pick a neighbourhood or home size — the Home feed will match it.
+            </ThemedText>
+          </View>
+        </View>
+
+        <ThemedText type="smallBold" style={styles.sectionLabel}>
+          Neighbourhoods
+        </ThemedText>
+        <View style={styles.chipWrap}>
+          {neighborhoodCounts.map(([neighborhood, count]) => (
+            <Chip
+              key={neighborhood}
+              label={neighborhood}
+              count={count}
+              onPress={() =>
+                browse({ ...EMPTY_FILTERS, neighborhood })
+              }
+            />
+          ))}
+        </View>
+
+        <ThemedText type="smallBold" style={styles.sectionLabel}>
+          Home size
+        </ThemedText>
+        <View style={styles.chipWrap}>
+          {sizeCounts.map(([size, count]) => (
+            <Chip
+              key={size}
+              label={SIZE_LABELS[size]}
+              count={count}
+              onPress={() => browse({ ...EMPTY_FILTERS, size })}
+            />
+          ))}
+        </View>
+
+        <ThemedView type="backgroundElement" style={styles.tipCard}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Tip: you can combine neighbourhood and size with the Filter button on the
+            Home screen.
           </ThemedText>
-
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
         </ThemedView>
-
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
-            </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
-
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+      </ScrollView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
+  content: {
+    paddingBottom: Spacing.six,
   },
-  contentContainer: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
-  titleContainer: {
-    gap: Spacing.three,
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
   },
-  centerText: {
-    textAlign: 'center',
+  headerText: {
+    flexShrink: 1,
+    gap: Spacing.half,
+  },
+  title: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: 800,
+  },
+  sectionLabel: {
+    marginTop: Spacing.four,
+    marginBottom: Spacing.two,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.one + 2,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.two,
+    borderRadius: Spacing.three,
+  },
+  countBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.one + 2,
   },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.8,
   },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
+  tipCard: {
+    marginTop: Spacing.five,
     borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
+    padding: Spacing.three,
   },
 });

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -18,6 +18,7 @@ import { BottomTabInset, Brand, Spacing } from '@/constants/theme';
 import { EMPTY_FILTERS, matchesListing, type ListingFilters } from '@/data/sample-listings';
 
 import { useTheme } from '@/hooks/use-theme';
+import { useBrowseStore } from '@/store/browse';
 import { useAllListings, useFetchListingsOnMount, useListingsStore } from '@/store/listings';
 
 const ItemSeparator = () => <View style={styles.separator} />;
@@ -32,6 +33,17 @@ export default function HomeScreen() {
   const error = useListingsStore((s) => s.error);
   const fetchListings = useListingsStore((s) => s.fetchListings);
   const allListings = useAllListings();
+
+  // Apply a browse request arriving from the Explore tab, then clear it so it
+  // only ever applies once.
+  const pendingBrowse = useBrowseStore((s) => s.pending);
+  const consumeBrowse = useBrowseStore((s) => s.consume);
+  useEffect(() => {
+    if (!pendingBrowse) return;
+    setFilters(pendingBrowse);
+    setQuery('');
+    consumeBrowse();
+  }, [pendingBrowse, consumeBrowse]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

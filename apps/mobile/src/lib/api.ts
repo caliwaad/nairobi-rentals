@@ -12,6 +12,34 @@ export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ??
   (Platform.OS === 'web' ? 'http://localhost:3000' : 'http://localhost:3000');
 
+/** Per-request timeout. Vercel's free tier cold-starts slowly, so give it room. */
+const REQUEST_TIMEOUT_MS = 20000;
+
+/**
+ * GET helper with a timeout + one retry — the feed is the app's first screen,
+ * so a single slow cold start shouldn't leave the user staring at an error.
+ * Retries are only for read requests; mutations stay single-attempt so a POST
+ * (subscribe, publish, review) is never accidentally duplicated.
+ */
+async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        return await fetch(url, { ...init, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch (e) {
+      lastError = e;
+      // AbortError (our timeout) or a network failure — retry once, then give up.
+    }
+  }
+  throw lastError;
+}
+
 /** Raw shape returned by the Next.js listings endpoints. */
 export interface ApiListing {
   id: string;
@@ -100,7 +128,7 @@ export function apiListingToListing(api: ApiListing): Listing {
 async function fetchJson<T>(path: string, token?: string | null): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetchWithRetry(`${API_BASE_URL}${path}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
   } catch {
